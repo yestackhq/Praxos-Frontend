@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Praxos — Phantom theme (lavender / aubergine on near-white). */
+:root {
+  --bg: #f6f5f9;
+  --surface: #ffffff;
+  --ink: #2b2440;
+  --soft: #6e6a7d;
+  --faint: #9a96a8;
+  --hairline: #ececf1;
+  --border: #e0dde9;
+  /* legacy aliases consumed by older primitives */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --muted-foreground: var(--soft);
+  --primary: #3c315b;
+  --primary-foreground: #ffffff;
+  --radius: 16px;
+}
+
+* {
+  border-color: var(--hairline);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(171, 159, 242, 0.32);
+}
+
+/* Thin dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+
+@layer components {
+  /* Hairline-bordered card surface used across the app. */
+  .card {
+    @apply rounded-xl border border-hairline bg-surface;
+  }
+  .eyebrow {
+    @apply text-eyebrow uppercase text-faint;
+  }
+  /* Tabular figures for metrics & tables */
+  .nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── Cinematic bloom motion (transform/opacity only) ─────────── */
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.12); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes drift-slow {
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-5%, 4%, 0) scale(1.18); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+@keyframes bloom-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.96); }
+  50% { opacity: 0.7; transform: scale(1.06); }
+}
+@keyframes kenburns {
+  0% { transform: scale(1.08) translate3d(0, 0, 0); }
+  100% { transform: scale(1.22) translate3d(-2%, -2%, 0); }
+}
+@keyframes petal-spin {
+  to { transform: rotate(360deg); }
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+/* Scroll-driven reveal: progress tracks scroll position. Content is ALWAYS
+   opacity 1 (never gated by an animation), so it can never get stuck hidden in a
+   backgrounded tab or a renderer that doesn't advance the timeline — the reveal
+   is a subtle upward slide only. */
+@keyframes reveal-up {
+  from { transform: translateY(24px); }
+  to { transform: translateY(0); }
+}
+.reveal {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 2% cover 30%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
