@@ -18,6 +18,7 @@ import AdminOverview from "@/app/pages/admin/Overview";
 import Understanding from "@/app/pages/admin/Understanding";
 import Cohorts from "@/app/pages/admin/Cohorts";
 import CohortDetail from "@/app/pages/admin/CohortDetail";
+import TeamDetail from "@/app/pages/admin/TeamDetail";
 import People from "@/app/pages/admin/People";
 import Teams from "@/app/pages/admin/Teams";
 import AdminDocuments from "@/app/pages/admin/Documents";
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="people/invite" element={<><People /><InvitePeople /></>} />
         <Route path="teams" element={<Teams />} />
         <Route path="teams/new" element={<><Teams /><NewTeam /></>} />
+        <Route path="teams/:id" element={<TeamDetail />} />
         <Route path="teams/lead" element={<><Teams /><AssignTeamLead /></>} />
         <Route path="documents" element={<AdminDocuments />} />
         <Route path="documents/plan" element={<TeachingPlan />} />

@@ -1,90 +1,120 @@
-import { Link } from "react-router-dom";
-import { SlidersHorizontal, Plus, MoreHorizontal } from "lucide-react";
-import { PageHeader, Table, Th, Td } from "@/ui/page";
-import { Avatar, Badge, ProgressBar } from "@/ui/data";
-import { Button, buttonVariants } from "@/ui/Button";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Users, FileText, Loader2, Trash2, ChevronRight, CheckCircle2, UserRound } from "lucide-react";
+import { PageHeader } from "@/ui/page";
+import { Card } from "@/ui/Card";
+import { Badge } from "@/ui/data";
 import { EmptyState } from "@/ui/EmptyState";
-import { useData } from "@/lib/data";
+import { buttonVariants } from "@/ui/Button";
+import { useData, useDataActions, type Team } from "@/lib/data";
+
+function docTitle(name: string): string {
+  return name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || name;
+}
+
+function TeamCard({ t }: { t: Team }) {
+  const navigate = useNavigate();
+  const { deleteTeam } = useDataActions();
+  const [busy, setBusy] = useState(false);
+  const open = () => t.id != null && navigate(`/admin/teams/${t.id}`);
+
+  const onDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (t.id == null || !window.confirm(`Delete team "${t.name}"? This won't remove the learners or documents.`)) return;
+    setBusy(true);
+    try {
+      await deleteTeam(t.id);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card onClick={open} className="group cursor-pointer p-5 transition-colors hover:border-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-title text-ink">{t.name}</h3>
+            {t.published ? (
+              <Badge tone="outline"><CheckCircle2 className="size-3.5" /> Published</Badge>
+            ) : (
+              <Badge tone="muted">Draft</Badge>
+            )}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-3 text-caption text-faint">
+            {t.lead && (
+              <span className="inline-flex items-center gap-1.5">
+                <UserRound className="size-3.5" /> Lead: {t.lead}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="size-3.5" /> {t.members} {t.members === 1 ? "learner" : "learners"}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <FileText className="size-3.5" /> {(t.documents?.length ?? 0)}{" "}
+              {(t.documents?.length ?? 0) === 1 ? "document" : "documents"}
+            </span>
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={onDelete}
+            disabled={busy}
+            title="Delete team"
+            aria-label={`Delete ${t.name}`}
+            className="grid size-8 place-items-center rounded-md text-faint transition-colors hover:bg-[#3c315b]/5 hover:text-ink disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          </button>
+          <ChevronRight className="size-4 text-faint transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </div>
+      {t.documents && t.documents.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {t.documents.map((d) => (
+            <span key={d.id} className="rounded-md border border-hairline px-2 py-1 text-caption text-soft">
+              {docTitle(d.name)}
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export default function Teams() {
   const { admin } = useData();
   const teams = admin.teams;
+
   return (
-    <div className="animate-fade-up">
+    <div className="animate-fade-up space-y-7">
       <PageHeader
         title="Teams"
-        subtitle="Departments in your workspace. Assign learning paths to a whole team at once."
+        subtitle="Group people under a lead, assign documents, and publish the teaching plan into each member's memory."
         action={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary">
-              <SlidersHorizontal className="size-4" /> Filter
-            </Button>
-            <Link to="/admin/teams/new" className={buttonVariants()}>
-              <Plus className="size-4" /> New team
-            </Link>
-          </div>
+          <Link to="/admin/teams/new" className={buttonVariants({ variant: "secondary" })}>
+            <Plus className="size-4" /> New team
+          </Link>
         }
       />
+
       {teams.length === 0 ? (
         <EmptyState
-          icon={Plus}
+          icon={Users}
           title="No teams yet"
-          body="Create a team to assign learning paths to a whole department at once."
+          body="Create a team, give it a lead, pick its documents and members, and publish a section-by-section teaching plan to everyone at once."
           action={
-            <Link to="/admin/teams/new" className={buttonVariants()}>
+            <Link to="/admin/teams/new" className={buttonVariants({ variant: "secondary" })}>
               <Plus className="size-4" /> New team
             </Link>
           }
         />
       ) : (
-      <Table
-        head={
-          <>
-            <Th>Team</Th>
-            <Th>Lead</Th>
-            <Th>Members</Th>
-            <Th>Assigned paths</Th>
-            <Th>Avg understanding</Th>
-            <Th className="w-10" />
-          </>
-        }
-      >
-        {teams.map((t) => (
-          <tr key={t.name} className="transition-colors hover:bg-[#3c315b]/[0.02]">
-            <Td className="text-ink">
-              <span className="flex items-center gap-3">
-                <span className="grid size-8 place-items-center rounded-md border border-hairline text-caption font-medium text-soft">
-                  {t.name[0]}
-                </span>
-                {t.name}
-              </span>
-            </Td>
-            <Td>
-              <span className="flex items-center gap-2.5">
-                <Avatar name={t.lead} size={26} />
-                <span className="text-ink">{t.lead}</span>
-              </span>
-            </Td>
-            <Td className="nums">{t.members}</Td>
-            <Td>
-              <Badge tone="muted">{t.paths} paths</Badge>
-            </Td>
-            <Td>
-              <span className="flex items-center gap-3">
-                <span className="w-28">
-                  <ProgressBar value={t.avg} />
-                </span>
-                <span className="nums text-label text-ink">{t.avg}</span>
-              </span>
-            </Td>
-            <Td>
-              <Link to="/admin/teams/lead" className="text-faint hover:text-ink" aria-label="Assign team lead">
-                <MoreHorizontal className="size-4" />
-              </Link>
-            </Td>
-          </tr>
-        ))}
-      </Table>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {teams.map((t) => (
+            <TeamCard key={t.id ?? t.name} t={t} />
+          ))}
+        </div>
       )}
     </div>
   );

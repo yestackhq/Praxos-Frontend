@@ -31,6 +31,18 @@ export interface Cohort {
   documentIds?: number[];
   documents?: CohortDoc[];
 }
+export interface Team {
+  id?: number;
+  name: string;
+  lead: string;
+  members: number;
+  avg: number;
+  paths?: number;
+  published?: boolean;
+  memberIds?: number[];
+  documentIds?: number[];
+  documents?: CohortDoc[];
+}
 
 export interface Bundle {
   mode: "demo" | "user" | "loading";
@@ -60,7 +72,7 @@ export interface Bundle {
     cohorts: Cohort[];
     people: Person[];
     pendingInvites: PendingInvite[];
-    teams: typeof mock.teams;
+    teams: Team[];
     documents: AdminDoc[];
   };
 }
@@ -144,6 +156,13 @@ export interface DataActions {
   ) => Promise<void>;
   deleteCohort: (id: number) => Promise<void>;
   publishCohort: (id: number) => Promise<void>;
+  createTeam: (name: string, lead: string, documentIds: number[], memberUserIds: number[]) => Promise<Team>;
+  editTeam: (
+    id: number,
+    patch: { name?: string; lead?: string; documentIds?: number[]; memberUserIds?: number[] },
+  ) => Promise<void>;
+  deleteTeam: (id: number) => Promise<void>;
+  publishTeam: (id: number) => Promise<void>;
 }
 const noop = async () => {};
 export const DataActionsContext = createContext<DataActions>({
@@ -159,6 +178,10 @@ export const DataActionsContext = createContext<DataActions>({
   editCohort: noop,
   deleteCohort: noop,
   publishCohort: noop,
+  createTeam: async () => ({ name: "", lead: "", members: 0, avg: 0 }),
+  editTeam: noop,
+  deleteTeam: noop,
+  publishTeam: noop,
 });
 export const useDataActions = () => useContext(DataActionsContext);
 

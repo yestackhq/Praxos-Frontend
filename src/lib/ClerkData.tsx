@@ -9,6 +9,7 @@ import {
   emptyUserBundle,
   type Bundle,
   type Cohort,
+  type Team,
 } from "./data";
 
 /**
@@ -140,6 +141,30 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
       },
       publishCohort: async (id: number) => {
         await apiSend("POST", `/api/cohorts/${id}/publish`, {}, await getToken());
+        await load();
+      },
+      createTeam: async (name: string, lead: string, documentIds: number[], memberUserIds: number[]) => {
+        const t = await apiPost<Team>(
+          "/api/teams",
+          { name, lead, documentIds, memberUserIds },
+          await getToken(),
+        );
+        await load();
+        return t;
+      },
+      editTeam: async (
+        id: number,
+        patch: { name?: string; lead?: string; documentIds?: number[]; memberUserIds?: number[] },
+      ) => {
+        await apiSend("PATCH", `/api/teams/${id}`, patch, await getToken());
+        await load();
+      },
+      deleteTeam: async (id: number) => {
+        await apiSend("DELETE", `/api/teams/${id}`, null, await getToken());
+        await load();
+      },
+      publishTeam: async (id: number) => {
+        await apiSend("POST", `/api/teams/${id}/publish`, {}, await getToken());
         await load();
       },
     }),
