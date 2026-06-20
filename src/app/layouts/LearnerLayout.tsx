@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { House, Route, History, FileText } from "lucide-react";
+import { House, Route, History, FileText, LayoutGrid } from "lucide-react";
 import { Logo } from "@/ui/Logo";
 import { ShellUser } from "@/app/auth/ShellUser";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,8 @@ function SideLink({ to, label, icon: Icon, end }: (typeof nav)[number]) {
 }
 
 export function LearnerLayout() {
-  const { learner } = useData();
+  const { learner, account, role } = useData();
+  const isAdmin = role === "Admin";
   return (
     <div className="flex h-screen bg-bg text-ink">
       <aside className="flex w-60 shrink-0 flex-col border-r border-hairline px-3 py-5">
@@ -42,9 +43,19 @@ export function LearnerLayout() {
           {nav.map((n) => (
             <SideLink key={n.to} {...n} />
           ))}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className="mt-2 flex items-center gap-3 rounded-md border-t border-hairline px-3 pb-2 pt-3 text-label text-soft transition-colors hover:text-ink"
+            >
+              <LayoutGrid className="size-4" /> Workspace admin
+            </NavLink>
+          )}
         </nav>
         <div className="mt-auto">
-          <ShellUser name={learner.name} sub="Learner" />
+          {/* Show the user's real role (e.g. "Workspace owner") — not a hardcoded
+              "Learner" — so an admin in their own learning view isn't mislabelled. */}
+          <ShellUser name={learner.name} sub={account.role} />
         </div>
       </aside>
       <main className="min-h-0 flex-1 overflow-y-auto">

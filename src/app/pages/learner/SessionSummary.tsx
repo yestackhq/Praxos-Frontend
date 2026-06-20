@@ -13,7 +13,9 @@ function headlineFor(score: number): string {
 }
 
 export default function SessionSummary() {
-  const { state } = useLocation() as { state?: { result?: ScoreResult | null; docName?: string } };
+  const { state } = useLocation() as {
+    state?: { result?: ScoreResult | null; docName?: string; back?: string };
+  };
   const result = state?.result ?? null;
 
   // Only ever show a REAL session result. If there's none (navigated here
@@ -22,6 +24,10 @@ export default function SessionSummary() {
   if (!result) return <Navigate to="/app" replace />;
 
   const docName = state?.docName || "your document";
+  // Return to wherever the session was launched from: /admin/documents for an
+  // admin who hit "Teach" there, the learner path otherwise.
+  const backTo = state?.back || "/app";
+  const backLabel = backTo.startsWith("/admin") ? "Back to documents" : "Back to my path";
   return (
     <div className="animate-fade-up mx-auto max-w-2xl py-6 text-center">
       <div className="flex justify-center">
@@ -81,8 +87,8 @@ export default function SessionSummary() {
       )}
 
       <div className="mt-7 flex justify-center gap-3">
-        <Link to="/app" className={buttonVariants()}>
-          Back to my path
+        <Link to={backTo} className={buttonVariants()}>
+          {backLabel}
         </Link>
       </div>
     </div>

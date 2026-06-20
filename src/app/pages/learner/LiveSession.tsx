@@ -2,13 +2,19 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mic, Sparkles } from "lucide-react";
 import { Logo } from "@/ui/Logo";
-import { Orb as Orb3D } from "@/ui/Orb3D";
+import { VoiceOrb, type VoiceOrbState } from "@/ui/VoiceOrb";
 import { Button, buttonVariants } from "@/ui/Button";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
 import { useVoiceSession, type SessionPhase, type AgentState, type Turn } from "@/lib/useVoiceSession";
 
-/** Praxos periwinkle → deep-lavender gradient for the orb. */
-const ORB_COLORS: [string, string] = ["#cabfff", "#7c6bb0"];
+/** Map the session phase + agent state onto the orb's visual state. */
+function orbState(agentState: AgentState, phase: SessionPhase): VoiceOrbState {
+  if (phase === "connecting") return "connecting";
+  if (agentState === "talking") return "speaking";
+  if (agentState === "thinking") return "connecting";
+  if (agentState === "listening") return "listening";
+  return "idle";
+}
 
 /** Word-by-word "karaoke" reveal of the tutor's streaming speech: each word fades
  * in as its transcript delta lands (~in sync with the spoken audio), and the
@@ -83,7 +89,7 @@ function SessionShell({
           {phase === "idle" && (
             <>
               <div className="mb-10 h-56 w-56">
-                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+                <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
               <p className="mt-2 max-w-md text-body-s text-faint">
@@ -99,7 +105,7 @@ function SessionShell({
           {phase === "connecting" && (
             <>
               <div className="mb-10 h-56 w-56 opacity-80">
-                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+                <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="flex items-center gap-2 text-title text-soft">
                 <Loader2 className="size-4 animate-spin" /> Connecting your tutor…
@@ -112,7 +118,7 @@ function SessionShell({
             <>
               <p className="text-caption text-faint">Now teaching · {docName}</p>
               <div className="my-10 h-64 w-64">
-                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+                <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <div className="flex min-h-[4.5em] max-w-xl items-center justify-center">
                 {liveCaption ? (
@@ -165,12 +171,20 @@ function SessionShell({
 }
 
 /** Live variant — uses Clerk auth + WebRTC. Only mounted when Clerk is enabled. */
-function LiveSessionInner({ docId, docName }: { docId: number | null; docName: string }) {
+function LiveSessionInner({
+  docId,
+  docName,
+  back,
+}: {
+  docId: number | null;
+  docName: string;
+  back?: string;
+}) {
   const navigate = useNavigate();
   const { phase, agentState, transcript, liveCaption, error, start, end } = useVoiceSession(docId);
   const onEnd = async () => {
     const result = await end();
-    navigate("/app/summary", { state: { result, docName } });
+    navigate("/app/summary", { state: { result, docName, back } });
   };
   return (
     <SessionShell
@@ -182,7 +196,7 @@ function LiveSessionInner({ docId, docName }: { docId: number | null; docName: s
       error={error}
       onStart={start}
       onEnd={onEnd}
-      onClose={() => navigate(-1)}
+      onClose={() => navigate(back ?? -1)}
     />
   );
 }
@@ -192,9 +206,10 @@ export default function LiveSession() {
   const navigate = useNavigate();
   const docName = params.get("name") || "your document";
   const docId = params.get("doc") ? Number(params.get("doc")) : null;
+  const back = params.get("back") || undefined;
   const [demoError, setDemoError] = useState<string | null>(null);
 
-  if (clerkEnabled) return <LiveSessionInner docId={docId} docName={docName} />;
+  if (clerkEnabled) return <LiveSessionInner docId={docId} docName={docName} back={back} />;
 
   // Signed-out preview: no auth/WebRTC — show the idle screen; starting prompts sign-in.
   return (

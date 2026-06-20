@@ -139,7 +139,7 @@ export default function AdminDocuments() {
                   <div className="flex items-center justify-end gap-4">
                     {d.status === "Indexed" && id != null && (
                       <Link
-                        to={`/app/session?doc=${id}&name=${encodeURIComponent(d.name)}`}
+                        to={`/app/session?doc=${id}&name=${encodeURIComponent(d.name)}&back=${encodeURIComponent("/admin/documents")}`}
                         className="inline-flex items-center gap-1.5 text-caption text-soft hover:text-ink"
                       >
                         <Play className="size-3.5" /> Teach
