@@ -75,9 +75,12 @@ const STATE_PARAMS: Record<VoiceOrbState, OrbParams> = {
     saturation: 1.0,
   },
   speaking: {
-    speed: 1.4,
-    amplitude: 0.35,
-    glow: 0.9,
+    // Calm, organic motion. Was speed 1.4 / amp 0.35 — that churned the simplex
+    // field like TV static. The real-voice envelope (added in the render loop)
+    // now supplies the liveliness, so the base motion can stay gentle.
+    speed: 0.6,
+    amplitude: 0.17,
+    glow: 0.72,
     brightness: 1.0,
     pulse: 0.0,
     saturation: 1.0,
@@ -310,6 +313,7 @@ export const VoiceOrb: FC<VoiceOrbProps> = memo(
   ({ state = "idle", variant = "default", volume = 0, volumeRef, className }) => {
     const internalVolumeRef = useRef(0);
     internalVolumeRef.current = volume;
+    const volEnv = useRef(0);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const glRef = useRef<ReturnType<typeof initWebGL>>(null);
     const animRef = useRef(0);
@@ -365,12 +369,18 @@ export const VoiceOrb: FC<VoiceOrbProps> = memo(
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      const vol = volumeRef?.current ?? internalVolumeRef.current;
+      const rawVol = volumeRef?.current ?? internalVolumeRef.current;
+      // Fast attack / slow release envelope (à la CogSi's orb): the surface
+      // swells with each phrase and settles gently, instead of jittering on every
+      // audio frame. This is what removes the "too much noise" while speaking.
+      const ve = volEnv.current;
+      volEnv.current = ve + (rawVol - ve) * (rawVol > ve ? 0.18 : 0.05);
+      const vol = volEnv.current;
 
       gl.uniform1f(uniforms.u_time, elapsed);
-      gl.uniform1f(uniforms.u_speed, p.speed + vol * 0.4);
-      gl.uniform1f(uniforms.u_amplitude, p.amplitude + vol * 0.12);
-      gl.uniform1f(uniforms.u_glow, p.glow + vol * 0.2);
+      gl.uniform1f(uniforms.u_speed, p.speed + vol * 0.18);
+      gl.uniform1f(uniforms.u_amplitude, p.amplitude + vol * 0.06);
+      gl.uniform1f(uniforms.u_glow, p.glow + vol * 0.18);
       gl.uniform1f(uniforms.u_brightness, p.brightness);
       gl.uniform1f(uniforms.u_pulse, p.pulse);
       gl.uniform1f(uniforms.u_saturation, p.saturation);
