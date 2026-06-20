@@ -94,6 +94,15 @@ export function useVoiceSession(documentId: number | null) {
       // Events channel — transcripts arrive here (config is baked into the token).
       const dc = pc.createDataChannel("oai-events");
       dc.onmessage = (e) => handleEvent(JSON.parse(e.data));
+      // Make the tutor speak FIRST: trigger its opening turn as soon as the channel
+      // opens, so it greets + starts teaching instead of waiting for the learner.
+      dc.onopen = () => {
+        try {
+          dc.send(JSON.stringify({ type: "response.create" }));
+        } catch {
+          /* best-effort — the session still works if this drops */
+        }
+      };
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
