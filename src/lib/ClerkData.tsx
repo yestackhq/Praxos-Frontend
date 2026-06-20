@@ -60,6 +60,25 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
     void load();
   }, [isLoaded, load, isSignedIn, user]);
 
+  // No WebSocket layer in this app, so keep the workspace fresh the lightweight
+  // way: refetch when the tab regains focus and on a slow interval while visible.
+  // This is how an accepted invite / new cohort member shows up without a manual
+  // refresh.
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    const refetch = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", refetch);
+    document.addEventListener("visibilitychange", refetch);
+    const id = window.setInterval(refetch, 20000);
+    return () => {
+      window.removeEventListener("focus", refetch);
+      document.removeEventListener("visibilitychange", refetch);
+      window.clearInterval(id);
+    };
+  }, [isLoaded, isSignedIn, load]);
+
   const actions = useMemo(
     () => ({
       refresh: () => void load(),

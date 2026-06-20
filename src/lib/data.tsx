@@ -17,6 +17,8 @@ export type Person = (typeof mock.people)[number] & { id?: number };
 export type PendingInvite = { id: number; email: string; role: string };
 export type AdminDoc = (typeof mock.adminDocuments)[number] & { id?: number };
 export type CohortDoc = { id: number; name: string };
+export type ContinueLearning = typeof mock.continueLearning & { docId?: number | null };
+export type MyDoc = (typeof mock.myDocuments)[number] & { docId?: number | null };
 export interface Cohort {
   id?: number;
   name: string;
@@ -45,10 +47,10 @@ export interface Bundle {
   };
   account: { name: string; email: string; role: string };
   role: string; // the current user's workspace role
-  continueLearning: typeof mock.continueLearning | null;
+  continueLearning: ContinueLearning | null;
   learningPath: PathItem[];
   pastSessions: typeof mock.pastSessions;
-  myDocuments: typeof mock.myDocuments;
+  myDocuments: MyDoc[];
   admin: {
     kpis: typeof mock.adminKpis;
     understandingTrend: typeof mock.understandingTrend;

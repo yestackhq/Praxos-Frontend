@@ -54,7 +54,14 @@ export default function LearnerHome() {
               </div>
               <ProgressBar value={continueLearning.understanding} />
             </div>
-            <Link to="/app/session" className={buttonVariants({ className: "mt-6" })}>
+            <Link
+              to={
+                continueLearning.docId
+                  ? `/app/session?doc=${continueLearning.docId}&name=${encodeURIComponent(continueLearning.doc)}`
+                  : "/app/session"
+              }
+              className={buttonVariants({ className: "mt-6" })}
+            >
               <Play className="size-4" /> Resume session
             </Link>
           </div>
