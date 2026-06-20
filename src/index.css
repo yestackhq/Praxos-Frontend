@@ -137,3 +137,10 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Clerk: flatten the dev-instance "Development mode" striped banner background
+   (a diagonal repeating-gradient on an inner footer element). The "Secured by
+   Clerk" text/logo stays; the dev banner itself is absent in production. */
+.cl-footer [class*="cl-internal"] {
+  background-image: none !important;
+}
