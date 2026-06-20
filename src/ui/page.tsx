@@ -42,12 +42,16 @@ export function Table({
   return (
     <div className={className}>
       {toolbar && <div className="mb-2 flex items-center justify-end gap-2">{toolbar}</div>}
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-hairline text-caption text-faint">{head}</tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
+      {/* Scroll the table sideways on narrow screens instead of squishing columns.
+          Negative margins let it bleed to the screen edges on mobile. */}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[36rem] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-hairline text-caption text-faint">{head}</tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

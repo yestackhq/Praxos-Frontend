@@ -1,9 +1,9 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { House, Route, History, FileText, LayoutGrid } from "lucide-react";
-import { Logo } from "@/ui/Logo";
 import { ShellUser } from "@/app/auth/ShellUser";
 import { cn } from "@/lib/utils";
 import { useData } from "@/lib/data";
+import { AppShell } from "./AppShell";
 
 const nav = [
   { to: "/app", label: "Overview", icon: House, end: true },
@@ -34,12 +34,9 @@ export function LearnerLayout() {
   const { learner, account, role } = useData();
   const isAdmin = role === "Admin";
   return (
-    <div className="flex h-screen bg-bg text-ink">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-hairline px-3 py-5">
-        <div className="px-2">
-          <Logo />
-        </div>
-        <nav className="mt-7 flex flex-col gap-1">
+    <AppShell
+      nav={
+        <nav className="flex flex-col gap-1">
           {nav.map((n) => (
             <SideLink key={n.to} {...n} />
           ))}
@@ -52,17 +49,10 @@ export function LearnerLayout() {
             </NavLink>
           )}
         </nav>
-        <div className="mt-auto">
-          {/* Show the user's real role (e.g. "Workspace owner") — not a hardcoded
-              "Learner" — so an admin in their own learning view isn't mislabelled. */}
-          <ShellUser name={learner.name} sub={account.role} />
-        </div>
-      </aside>
-      <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-content px-10 py-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+      }
+      // Show the user's real role (e.g. "Workspace owner") — not a hardcoded
+      // "Learner" — so an admin in their own learning view isn't mislabelled.
+      footer={<ShellUser name={learner.name} sub={account.role} />}
+    />
   );
 }

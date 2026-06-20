@@ -67,17 +67,17 @@ function SessionShell({
   const demonstrated = transcript.filter((t) => t.role === "learner").length;
   return (
     <div className="flex h-screen flex-col bg-bg text-ink">
-      <header className="flex items-center gap-4 border-b border-hairline px-5 py-3">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-caption text-soft">
+      <header className="flex items-center gap-3 border-b border-hairline px-4 py-3 sm:gap-4 sm:px-5">
+        <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border px-3 py-1.5 text-caption text-soft">
           <span className={`size-1.5 rounded-full ${phase === "live" ? "animate-pulse bg-ink" : "bg-faint"}`} />
           {phase === "live" ? "Live" : phase === "connecting" ? "Connecting" : phase === "scoring" ? "Scoring" : "Ready"}
         </span>
-        <span className="flex items-center gap-2 text-label text-soft">
-          <Logo showWord={false} size={18} /> {docName}
+        <span className="flex min-w-0 items-center gap-2 text-label text-soft">
+          <Logo showWord={false} size={18} /> <span className="truncate">{docName}</span>
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {phase === "live" && (
-            <span className="flex items-center gap-2 text-caption text-soft">
+            <span className="hidden items-center gap-2 text-caption text-soft sm:flex">
               <Mic className="size-3.5" /> Mic on
             </span>
           )}
@@ -93,11 +93,11 @@ function SessionShell({
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_320px]">
-        <section className="flex flex-col items-center justify-center px-10 text-center">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_320px]">
+        <section className="flex flex-col items-center justify-center px-5 py-8 text-center sm:px-8 lg:px-10 lg:py-0">
           {phase === "idle" && (
             <>
-              <div className="mb-6 size-96">
+              <div className="mb-6 size-72 sm:size-96">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
@@ -113,7 +113,7 @@ function SessionShell({
 
           {phase === "connecting" && (
             <>
-              <div className="mb-6 size-96 opacity-80">
+              <div className="mb-6 size-72 opacity-80 sm:size-96">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="flex items-center gap-2 text-title text-soft">
@@ -126,7 +126,7 @@ function SessionShell({
           {(phase === "live" || phase === "scoring") && (
             <>
               <p className="text-caption text-faint">Now teaching · {docName}</p>
-              <div className="my-6 size-[32rem]">
+              <div className="my-6 size-[17rem] sm:size-[24rem] lg:size-[32rem]">
                 <VoiceOrb
                   state={orbState(agentState, phase)}
                   variant="violet"
@@ -157,7 +157,7 @@ function SessionShell({
           )}
         </section>
 
-        <aside className="overflow-y-auto border-l border-hairline px-5 py-5">
+        <aside className="hidden overflow-y-auto border-l border-hairline px-5 py-5 lg:block">
           <div className="flex items-end gap-2">
             <span className="nums text-[44px] font-semibold leading-none text-ink">{demonstrated}</span>
             <span className="pb-1 text-label text-soft">answers given</span>

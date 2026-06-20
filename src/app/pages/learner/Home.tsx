@@ -58,7 +58,8 @@ export default function LearnerHome() {
               <Play className="size-4" /> Resume session
             </Link>
           </div>
-          <Orb size={260} className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-90" />
+          {/* Decorative — only on wide screens where it won't sit under the text. */}
+          <Orb size={260} className="absolute -right-6 top-1/2 hidden -translate-y-1/2 opacity-90 xl:block" />
         </Card>
       ) : (
         <EmptyState
