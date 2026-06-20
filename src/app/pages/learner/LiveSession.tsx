@@ -2,15 +2,35 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mic, Sparkles } from "lucide-react";
 import { Logo } from "@/ui/Logo";
-import { Orb } from "@/ui/data";
+import { Orb as Orb3D } from "@/ui/Orb3D";
 import { Button, buttonVariants } from "@/ui/Button";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
-import { useVoiceSession, type SessionPhase, type Turn } from "@/lib/useVoiceSession";
+import { useVoiceSession, type SessionPhase, type AgentState, type Turn } from "@/lib/useVoiceSession";
+
+/** Praxos periwinkle → deep-lavender gradient for the orb. */
+const ORB_COLORS: [string, string] = ["#cabfff", "#7c6bb0"];
+
+/** Word-by-word "karaoke" reveal of the tutor's streaming speech: each word fades
+ * in as its transcript delta lands (~in sync with the spoken audio), and the
+ * caption stays put in a fixed area so it doesn't scroll away mid-sentence. */
+function KaraokeCaption({ text }: { text: string }) {
+  const words = text.trim() ? text.trim().split(/\s+/) : [];
+  return (
+    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-h3 leading-snug text-ink">
+      {words.map((w, i) => (
+        <span key={i} className="karaoke-word">
+          {w}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 /** Presentational session screen — no auth/WebRTC, so it's safe to render
  * whether or not Clerk is configured. */
 function SessionShell({
   phase,
+  agentState,
   docName,
   transcript,
   liveCaption,
@@ -20,6 +40,7 @@ function SessionShell({
   onClose,
 }: {
   phase: SessionPhase;
+  agentState: AgentState;
   docName: string;
   transcript: Turn[];
   liveCaption: string;
@@ -61,7 +82,9 @@ function SessionShell({
         <section className="flex flex-col items-center justify-center px-10 text-center">
           {phase === "idle" && (
             <>
-              <Orb size={220} className="mb-10" />
+              <div className="mb-10 h-56 w-56">
+                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+              </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
               <p className="mt-2 max-w-md text-body-s text-faint">
                 Praxos will teach it out loud and ask you questions. Talk back naturally - it scores how well you
@@ -75,7 +98,9 @@ function SessionShell({
 
           {phase === "connecting" && (
             <>
-              <Orb size={220} className="mb-10 opacity-70" />
+              <div className="mb-10 h-56 w-56 opacity-80">
+                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+              </div>
               <p className="flex items-center gap-2 text-title text-soft">
                 <Loader2 className="size-4 animate-spin" /> Connecting your tutor…
               </p>
@@ -86,10 +111,18 @@ function SessionShell({
           {(phase === "live" || phase === "scoring") && (
             <>
               <p className="text-caption text-faint">Now teaching · {docName}</p>
-              <Orb size={260} className="my-10" />
-              <p className="min-h-[3em] max-w-xl text-h3 leading-snug text-ink">
-                {liveCaption || (phase === "scoring" ? "Scoring your understanding…" : "Listening…")}
-              </p>
+              <div className="my-10 h-64 w-64">
+                <Orb3D agentState={agentState} colors={ORB_COLORS} />
+              </div>
+              <div className="flex min-h-[4.5em] max-w-xl items-center justify-center">
+                {liveCaption ? (
+                  <KaraokeCaption text={liveCaption} />
+                ) : (
+                  <p className="text-h3 leading-snug text-faint">
+                    {phase === "scoring" ? "Scoring your understanding…" : "Listening…"}
+                  </p>
+                )}
+              </div>
             </>
           )}
 
@@ -134,7 +167,7 @@ function SessionShell({
 /** Live variant — uses Clerk auth + WebRTC. Only mounted when Clerk is enabled. */
 function LiveSessionInner({ docId, docName }: { docId: number | null; docName: string }) {
   const navigate = useNavigate();
-  const { phase, transcript, liveCaption, error, start, end } = useVoiceSession(docId);
+  const { phase, agentState, transcript, liveCaption, error, start, end } = useVoiceSession(docId);
   const onEnd = async () => {
     const result = await end();
     navigate("/app/summary", { state: { result, docName } });
@@ -142,6 +175,7 @@ function LiveSessionInner({ docId, docName }: { docId: number | null; docName: s
   return (
     <SessionShell
       phase={phase}
+      agentState={agentState}
       docName={docName}
       transcript={transcript}
       liveCaption={liveCaption}
@@ -166,6 +200,7 @@ export default function LiveSession() {
   return (
     <SessionShell
       phase={demoError ? "error" : "idle"}
+      agentState={null}
       docName={docName}
       transcript={[]}
       liveCaption=""

@@ -144,3 +144,26 @@ body {
 .cl-footer [class*="cl-internal"] {
   background-image: none !important;
 }
+
+/* Live-session "karaoke" captions: each word fades/rises in as it is spoken. */
+@keyframes karaoke-word-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.karaoke-word {
+  display: inline-block;
+  animation: karaoke-word-in 0.34s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .karaoke-word {
+    animation: none;
+  }
+}

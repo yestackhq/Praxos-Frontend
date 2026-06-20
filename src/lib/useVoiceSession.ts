@@ -4,6 +4,9 @@ import { apiPost } from "@/lib/apiClient";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
 
 export type SessionPhase = "idle" | "connecting" | "live" | "scoring" | "ended" | "error";
+/** Drives the orb's animation: thinking (connecting), listening (learner's turn),
+ * talking (tutor speaking), or null (idle). */
+export type AgentState = null | "thinking" | "listening" | "talking";
 export type Turn = { role: "tutor" | "learner"; text: string };
 
 export interface ScoreResult {
@@ -33,6 +36,7 @@ const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 export function useVoiceSession(documentId: number | null) {
   const { getToken } = useAuth();
   const [phase, setPhase] = useState<SessionPhase>("idle");
+  const [agentState, setAgentState] = useState<AgentState>(null);
   const [transcript, setTranscript] = useState<Turn[]>([]);
   const [liveCaption, setLiveCaption] = useState("");
   const [result, setResult] = useState<ScoreResult | null>(null);
@@ -63,6 +67,7 @@ export function useVoiceSession(documentId: number | null) {
       return;
     }
     setPhase("connecting");
+    setAgentState("thinking");
     setError(null);
     try {
       const token = await getToken();
@@ -100,10 +105,12 @@ export function useVoiceSession(documentId: number | null) {
       if (!resp.ok) throw new Error("Voice connection was refused.");
       await pc.setRemoteDescription({ type: "answer", sdp: await resp.text() });
       setPhase("live");
+      setAgentState("listening");
     } catch (err) {
       teardown();
       setError(err instanceof Error ? err.message : "Could not start the session.");
       setPhase("error");
+      setAgentState(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, getToken, teardown]);
@@ -114,10 +121,12 @@ export function useVoiceSession(documentId: number | null) {
     if (t === "response.audio_transcript.delta" || t === "response.output_audio_transcript.delta") {
       tutorBuf.current += evt.delta ?? "";
       setLiveCaption(tutorBuf.current);
+      setAgentState("talking");
     } else if (t === "response.audio_transcript.done" || t === "response.output_audio_transcript.done") {
       if (tutorBuf.current.trim()) push({ role: "tutor", text: tutorBuf.current.trim() });
       tutorBuf.current = "";
       setLiveCaption("");
+      setAgentState("listening");
     } else if (t === "conversation.item.input_audio_transcription.completed") {
       // Learner's spoken answer, transcribed.
       if (evt.transcript?.trim()) push({ role: "learner", text: evt.transcript.trim() });
@@ -126,6 +135,7 @@ export function useVoiceSession(documentId: number | null) {
 
   const end = useCallback(async (): Promise<ScoreResult | null> => {
     teardown();
+    setAgentState(null);
     const turns = transcriptRef.current;
     if (!documentId || turns.length === 0) {
       setPhase("ended");
@@ -145,5 +155,5 @@ export function useVoiceSession(documentId: number | null) {
     }
   }, [documentId, getToken, teardown]);
 
-  return { phase, transcript, liveCaption, result, error, start, end };
+  return { phase, agentState, transcript, liveCaption, result, error, start, end };
 }
