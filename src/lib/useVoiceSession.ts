@@ -134,7 +134,9 @@ export function useVoiceSession(documentId: number | null) {
     } else if (t === "response.audio_transcript.done" || t === "response.output_audio_transcript.done") {
       if (tutorBuf.current.trim()) push({ role: "tutor", text: tutorBuf.current.trim() });
       tutorBuf.current = "";
-      setLiveCaption("");
+      // Keep the caption on screen — the spoken audio lags the streamed
+      // transcript, so clearing it here makes the text vanish while the tutor is
+      // still talking. The next tutor turn's first delta replaces it.
       setAgentState("listening");
     } else if (t === "conversation.item.input_audio_transcription.completed") {
       // Learner's spoken answer, transcribed.

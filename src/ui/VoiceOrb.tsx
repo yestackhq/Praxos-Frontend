@@ -405,7 +405,7 @@ export const VoiceOrb: FC<VoiceOrbProps> = memo(
     return (
       <canvas
         ref={canvasRef}
-        className={cn("aui-voice-orb size-16 shrink-0", className)}
+        className={cn("aui-voice-orb block size-full", className)}
         data-state={state}
       />
     );

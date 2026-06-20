@@ -88,7 +88,7 @@ function SessionShell({
         <section className="flex flex-col items-center justify-center px-10 text-center">
           {phase === "idle" && (
             <>
-              <div className="mb-10 h-56 w-56">
+              <div className="mb-8 size-80">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
@@ -104,7 +104,7 @@ function SessionShell({
 
           {phase === "connecting" && (
             <>
-              <div className="mb-10 h-56 w-56 opacity-80">
+              <div className="mb-8 size-80 opacity-80">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="flex items-center gap-2 text-title text-soft">
@@ -117,7 +117,7 @@ function SessionShell({
           {(phase === "live" || phase === "scoring") && (
             <>
               <p className="text-caption text-faint">Now teaching · {docName}</p>
-              <div className="my-10 h-64 w-64">
+              <div className="my-8 size-[24rem]">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <div className="flex min-h-[4.5em] max-w-xl items-center justify-center">
@@ -204,7 +204,8 @@ function LiveSessionInner({
 export default function LiveSession() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const docName = params.get("name") || "your document";
+  const rawName = params.get("name") || "your document";
+  const docName = rawName.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || rawName;
   const docId = params.get("doc") ? Number(params.get("doc")) : null;
   const back = params.get("back") || undefined;
   const [demoError, setDemoError] = useState<string | null>(null);
