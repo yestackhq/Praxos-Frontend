@@ -86,6 +86,10 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
         );
         await load();
       },
+      deleteDocument: async (id: number) => {
+        await apiSend("DELETE", `/api/documents/${id}`, null, await getToken());
+        await load();
+      },
     }),
     [load, getToken],
   );

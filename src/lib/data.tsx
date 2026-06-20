@@ -115,6 +115,7 @@ export interface DataActions {
   completeOnboarding: (workspaceName?: string) => Promise<void>;
   uploadDocument: (name: string, sections?: number) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
+  deleteDocument: (id: number) => Promise<void>;
 }
 const noop = async () => {};
 export const DataActionsContext = createContext<DataActions>({
@@ -125,6 +126,7 @@ export const DataActionsContext = createContext<DataActions>({
   completeOnboarding: noop,
   uploadDocument: noop,
   uploadFile: noop,
+  deleteDocument: noop,
 });
 export const useDataActions = () => useContext(DataActionsContext);
 
