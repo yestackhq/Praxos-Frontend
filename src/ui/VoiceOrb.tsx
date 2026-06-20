@@ -4,7 +4,7 @@
  * the `state` prop (idle/connecting/listening/speaking/muted) and an optional
  * `volume` (0-1). Raw WebGL2 shader — no three.js.
  */
-import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
+import { type FC, type RefObject, memo, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 
@@ -300,13 +300,16 @@ export type VoiceOrbProps = {
   variant?: VoiceOrbVariant;
   /** Optional live level (0-1) to make the orb react to mic/output volume. */
   volume?: number;
+  /** A live ref (0-1) read every frame so the orb tracks the real audio without
+   * re-rendering React each frame. Takes precedence over `volume`. */
+  volumeRef?: RefObject<number>;
   className?: string;
 };
 
 export const VoiceOrb: FC<VoiceOrbProps> = memo(
-  ({ state = "idle", variant = "default", volume = 0, className }) => {
-    const volumeRef = useRef(0);
-    volumeRef.current = volume;
+  ({ state = "idle", variant = "default", volume = 0, volumeRef, className }) => {
+    const internalVolumeRef = useRef(0);
+    internalVolumeRef.current = volume;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const glRef = useRef<ReturnType<typeof initWebGL>>(null);
     const animRef = useRef(0);
@@ -362,7 +365,7 @@ export const VoiceOrb: FC<VoiceOrbProps> = memo(
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      const vol = volumeRef.current;
+      const vol = volumeRef?.current ?? internalVolumeRef.current;
 
       gl.uniform1f(uniforms.u_time, elapsed);
       gl.uniform1f(uniforms.u_speed, p.speed + vol * 0.4);

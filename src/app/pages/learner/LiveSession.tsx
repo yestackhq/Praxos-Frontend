@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type RefObject, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mic, Sparkles } from "lucide-react";
 import { Logo } from "@/ui/Logo";
@@ -16,15 +16,20 @@ function orbState(agentState: AgentState, phase: SessionPhase): VoiceOrbState {
   return "idle";
 }
 
-/** Word-by-word "karaoke" reveal of the tutor's streaming speech: each word fades
- * in as its transcript delta lands (~in sync with the spoken audio), and the
- * caption stays put in a fixed area so it doesn't scroll away mid-sentence. */
-function KaraokeCaption({ text }: { text: string }) {
+/** Karaoke caption: the whole tutor line stays on screen and the word currently
+ * being SPOKEN (paced by the real audio, not the faster text stream) lights up —
+ * already-spoken words dim, upcoming words faint. */
+function KaraokeCaption({ text, spoken }: { text: string; spoken: number }) {
   const words = text.trim() ? text.trim().split(/\s+/) : [];
   return (
-    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-h3 leading-snug text-ink">
+    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-h3 leading-snug">
       {words.map((w, i) => (
-        <span key={i} className="karaoke-word">
+        <span
+          key={i}
+          className={`transition-colors duration-150 ${
+            i < spoken ? "text-soft" : i === spoken ? "text-ink" : "text-faint"
+          }`}
+        >
           {w}
         </span>
       ))}
@@ -40,6 +45,8 @@ function SessionShell({
   docName,
   transcript,
   liveCaption,
+  spokenWords,
+  volumeRef,
   error,
   onStart,
   onEnd,
@@ -50,6 +57,8 @@ function SessionShell({
   docName: string;
   transcript: Turn[];
   liveCaption: string;
+  spokenWords: number;
+  volumeRef?: RefObject<number>;
   error: string | null;
   onStart: () => void;
   onEnd: () => void;
@@ -88,7 +97,7 @@ function SessionShell({
         <section className="flex flex-col items-center justify-center px-10 text-center">
           {phase === "idle" && (
             <>
-              <div className="mb-8 size-80">
+              <div className="mb-6 size-96">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
@@ -104,7 +113,7 @@ function SessionShell({
 
           {phase === "connecting" && (
             <>
-              <div className="mb-8 size-80 opacity-80">
+              <div className="mb-6 size-96 opacity-80">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="flex items-center gap-2 text-title text-soft">
@@ -117,12 +126,17 @@ function SessionShell({
           {(phase === "live" || phase === "scoring") && (
             <>
               <p className="text-caption text-faint">Now teaching · {docName}</p>
-              <div className="my-8 size-[24rem]">
-                <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
+              <div className="my-6 size-[32rem]">
+                <VoiceOrb
+                  state={orbState(agentState, phase)}
+                  variant="violet"
+                  volumeRef={volumeRef}
+                  className="size-full"
+                />
               </div>
-              <div className="flex min-h-[4.5em] max-w-xl items-center justify-center">
+              <div className="flex min-h-[4.5em] max-w-2xl items-center justify-center">
                 {liveCaption ? (
-                  <KaraokeCaption text={liveCaption} />
+                  <KaraokeCaption text={liveCaption} spoken={spokenWords} />
                 ) : (
                   <p className="text-h3 leading-snug text-faint">
                     {phase === "scoring" ? "Scoring your understanding…" : "Listening…"}
@@ -181,7 +195,8 @@ function LiveSessionInner({
   back?: string;
 }) {
   const navigate = useNavigate();
-  const { phase, agentState, transcript, liveCaption, error, start, end } = useVoiceSession(docId);
+  const { phase, agentState, transcript, liveCaption, spokenWords, error, start, end, outputVolumeRef } =
+    useVoiceSession(docId);
   const onEnd = async () => {
     const result = await end();
     navigate("/app/summary", { state: { result, docName, back } });
@@ -193,6 +208,8 @@ function LiveSessionInner({
       docName={docName}
       transcript={transcript}
       liveCaption={liveCaption}
+      spokenWords={spokenWords}
+      volumeRef={outputVolumeRef}
       error={error}
       onStart={start}
       onEnd={onEnd}
@@ -220,6 +237,7 @@ export default function LiveSession() {
       docName={docName}
       transcript={[]}
       liveCaption=""
+      spokenWords={0}
       error={demoError}
       onStart={() => setDemoError("Sign in to start a live teaching session.")}
       onEnd={() => {}}
