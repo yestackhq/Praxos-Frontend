@@ -70,7 +70,10 @@ export function useVoiceSession(documentId: number | null) {
       const buf = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(buf);
       let sum = 0;
-      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      for (let i = 0; i < buf.length; i++) {
+        const v = buf[i] ?? 0;
+        sum += v * v;
+      }
       const vol = Math.min(1, Math.sqrt(sum / buf.length) / 90);
       outputVolumeRef.current = vol;
       if (vol > 0.06) {

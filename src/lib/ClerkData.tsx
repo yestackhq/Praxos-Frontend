@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { apiPost, apiSend, apiUpload } from "@/lib/apiClient";
 import { uploadOriginalPdf } from "@/lib/docStorage";
-import { DataActionsContext, DataContext, demoBundle, emptyUserBundle, type Bundle } from "./data";
+import {
+  DataActionsContext,
+  DataContext,
+  demoBundle,
+  emptyUserBundle,
+  type Bundle,
+  type Cohort,
+} from "./data";
 
 /**
  * Only mounted when Clerk is configured (so the hooks always have a provider).
@@ -90,6 +97,30 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
       },
       deleteDocument: async (id: number) => {
         await apiSend("DELETE", `/api/documents/${id}`, null, await getToken());
+        await load();
+      },
+      createCohort: async (name: string, documentIds: number[], memberUserIds: number[]) => {
+        const c = await apiPost<Cohort>(
+          "/api/cohorts",
+          { name, documentIds, memberUserIds },
+          await getToken(),
+        );
+        await load();
+        return c;
+      },
+      editCohort: async (
+        id: number,
+        patch: { name?: string; documentIds?: number[]; memberUserIds?: number[] },
+      ) => {
+        await apiSend("PATCH", `/api/cohorts/${id}`, patch, await getToken());
+        await load();
+      },
+      deleteCohort: async (id: number) => {
+        await apiSend("DELETE", `/api/cohorts/${id}`, null, await getToken());
+        await load();
+      },
+      publishCohort: async (id: number) => {
+        await apiSend("POST", `/api/cohorts/${id}/publish`, {}, await getToken());
         await load();
       },
     }),

@@ -213,7 +213,7 @@ function LiveSessionInner({
       error={error}
       onStart={start}
       onEnd={onEnd}
-      onClose={() => navigate(back ?? -1)}
+      onClose={() => (back ? navigate(back) : navigate(-1))}
     />
   );
 }

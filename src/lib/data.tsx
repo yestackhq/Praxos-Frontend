@@ -15,6 +15,20 @@ import { ClerkDataProvider } from "./ClerkData";
 export type PathItem = (typeof mock.learningPath)[number];
 export type Person = (typeof mock.people)[number] & { id?: number };
 export type PendingInvite = { id: number; email: string; role: string };
+export type AdminDoc = (typeof mock.adminDocuments)[number] & { id?: number };
+export type CohortDoc = { id: number; name: string };
+export interface Cohort {
+  id?: number;
+  name: string;
+  members: number;
+  avg: number;
+  completion: number;
+  status: string;
+  published?: boolean;
+  memberIds?: number[];
+  documentIds?: number[];
+  documents?: CohortDoc[];
+}
 
 export interface Bundle {
   mode: "demo" | "user" | "loading";
@@ -41,11 +55,11 @@ export interface Bundle {
     cohortHealth: typeof mock.cohortHealth;
     needsAttention: typeof mock.needsAttention;
     recentActivity: typeof mock.recentActivity;
-    cohorts: typeof mock.cohorts;
+    cohorts: Cohort[];
     people: Person[];
     pendingInvites: PendingInvite[];
     teams: typeof mock.teams;
-    documents: typeof mock.adminDocuments;
+    documents: AdminDoc[];
   };
 }
 
@@ -121,6 +135,13 @@ export interface DataActions {
   uploadDocument: (name: string, sections?: number) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
   deleteDocument: (id: number) => Promise<void>;
+  createCohort: (name: string, documentIds: number[], memberUserIds: number[]) => Promise<Cohort>;
+  editCohort: (
+    id: number,
+    patch: { name?: string; documentIds?: number[]; memberUserIds?: number[] },
+  ) => Promise<void>;
+  deleteCohort: (id: number) => Promise<void>;
+  publishCohort: (id: number) => Promise<void>;
 }
 const noop = async () => {};
 export const DataActionsContext = createContext<DataActions>({
@@ -132,6 +153,10 @@ export const DataActionsContext = createContext<DataActions>({
   uploadDocument: noop,
   uploadFile: noop,
   deleteDocument: noop,
+  createCohort: async () => ({ name: "", members: 0, avg: 0, completion: 0, status: "Draft" }),
+  editCohort: noop,
+  deleteCohort: noop,
+  publishCohort: noop,
 });
 export const useDataActions = () => useContext(DataActionsContext);
 

@@ -17,6 +17,7 @@ import LiveSession from "@/app/pages/learner/LiveSession";
 import AdminOverview from "@/app/pages/admin/Overview";
 import Understanding from "@/app/pages/admin/Understanding";
 import Cohorts from "@/app/pages/admin/Cohorts";
+import CohortDetail from "@/app/pages/admin/CohortDetail";
 import People from "@/app/pages/admin/People";
 import Teams from "@/app/pages/admin/Teams";
 import AdminDocuments from "@/app/pages/admin/Documents";
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="understanding" element={<Understanding />} />
         <Route path="cohorts" element={<Cohorts />} />
         <Route path="cohorts/new" element={<><Cohorts /><NewCohort /></>} />
+        <Route path="cohorts/:id" element={<CohortDetail />} />
         <Route path="people" element={<People />} />
         <Route path="people/invite" element={<><People /><InvitePeople /></>} />
         <Route path="teams" element={<Teams />} />
