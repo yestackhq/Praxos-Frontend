@@ -79,11 +79,16 @@ export function emptyUserBundle(name: string, email: string): Bundle {
   const first = (name || "there").trim().split(" ")[0] || "there";
   return {
     mode: "user",
-    needsOnboarding: true,
+    // Least-privilege placeholder used while loading / on a failed bootstrap. It
+    // must NOT claim ownership or onboarding: an invited learner whose bootstrap
+    // is slow (cold backend) would otherwise be shown an empty workspace they
+    // appear to OWN — the "create your own workspace" screen. The real role +
+    // onboarding flag only ever come from a successful backend bundle.
+    needsOnboarding: false,
     workspace: { name: `${first}'s workspace`, plan: "Personal workspace" },
     learner: { name, firstName: first, understanding: 0, pathProgress: "0 / 0", practisedThisWeek: "0m", sessions: 0, streak: 0 },
-    account: { name, email, role: "Workspace owner" },
-    role: "Admin",
+    account: { name, email, role: "Learner" },
+    role: "Learner",
     continueLearning: null,
     learningPath: [],
     pastSessions: [],

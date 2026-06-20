@@ -23,16 +23,18 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
     }
     const name = user.fullName || user.firstName || "there";
     const email = user.primaryEmailAddress?.emailAddress ?? "";
-    // The Clerk token can be briefly unavailable right after navigation, so retry
-    // a few times before giving up — a transient failure must not strand the user.
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Retry generously: besides a briefly-unavailable Clerk token, the backend
+    // may be COLD-STARTING (Railway sleeps idle services — 10-20s to wake). Giving
+    // up after ~2s drops the user onto the misleading empty bundle, so an invited
+    // learner looks like they own an empty workspace. Ride the cold start out.
+    for (let attempt = 0; attempt < 7; attempt++) {
       try {
         const token = await getToken();
         const data = await apiPost<Bundle>("/api/bootstrap", { name, email }, token);
         setBundle({ ...data, mode: "user" });
         return;
       } catch {
-        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, Math.min(3000, 700 * (attempt + 1))));
       }
     }
     // Hard failure: land the user in the app, NOT onboarding. needsOnboarding is
