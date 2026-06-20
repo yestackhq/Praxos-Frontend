@@ -2,7 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ClerkProvider } from "@clerk/clerk-react";
-import { clerkAppearance } from "@/app/auth/clerkEnabled";
+import { clerkAppearance, clerkLocalization } from "@/app/auth/clerkEnabled";
+import { ClerkPolish } from "@/app/auth/ClerkPolish";
 import App from "./App";
 import "./index.css";
 
@@ -20,12 +21,14 @@ createRoot(document.getElementById("root")!).render(
       <ClerkProvider
         publishableKey={PUBLISHABLE_KEY}
         appearance={clerkAppearance}
+        localization={clerkLocalization}
         afterSignOutUrl="/"
         signInUrl="/sign-in"
         signUpUrl="/sign-up"
         signInFallbackRedirectUrl="/launch"
         signUpFallbackRedirectUrl="/launch"
       >
+        <ClerkPolish />
         {tree}
       </ClerkProvider>
     ) : (

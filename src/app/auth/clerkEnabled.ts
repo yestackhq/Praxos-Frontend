@@ -2,6 +2,17 @@
 export const clerkEnabled = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
 /**
+ * The Clerk *application* is still named "Docent" in the Clerk dashboard, so the
+ * default titles render "Sign in to Docent". Until it's renamed there, override
+ * the app-name-bearing strings so every Clerk surface says Praxos.
+ * (Rename in Clerk Dashboard → Settings → Application name for a global fix.)
+ */
+export const clerkLocalization = {
+  signIn: { start: { title: "Sign in to Praxos" } },
+  signUp: { start: { title: "Create your Praxos account" } },
+} as const;
+
+/**
  * Phantom (light lavender/aubergine) appearance applied to ALL Clerk surfaces
  * (SignIn/SignUp, UserButton, and the "Manage account" UserProfile modal) via
  * the provider. Uses Clerk's default light theme + Praxos brand variables.
