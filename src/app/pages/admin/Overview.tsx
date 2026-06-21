@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Search, Bell, Download } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { Card } from "@/ui/Card";
@@ -5,9 +6,43 @@ import { Avatar, ProgressBar } from "@/ui/data";
 import { Button } from "@/ui/Button";
 import { useData } from "@/lib/data";
 
+const RANGES = ["Weeks", "Months", "Quarters"] as const;
+type Range = (typeof RANGES)[number];
+
+/** Re-bucket raw session points (date + score) into the selected period, averaging. */
+function bucketSeries(series: { date: string; score: number }[], mode: Range) {
+  if (!series.length) return null;
+  const keyOf = (d: string): string => {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return d;
+    const y = dt.getFullYear();
+    if (mode === "Months") return `${y}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    if (mode === "Quarters") return `${y} Q${Math.floor(dt.getMonth() / 3) + 1}`;
+    const offset = (dt.getDay() + 6) % 7; // Monday-anchored week
+    const monday = new Date(dt);
+    monday.setDate(dt.getDate() - offset);
+    return `${monday.getMonth() + 1}/${monday.getDate()}`;
+  };
+  const groups = new Map<string, number[]>();
+  for (const p of series) {
+    const k = keyOf(p.date);
+    const arr = groups.get(k) ?? [];
+    arr.push(p.score);
+    groups.set(k, arr);
+  }
+  return [...groups.entries()].map(([m, arr]) => ({ m, v: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) }));
+}
+
 export default function AdminOverview() {
   const { admin } = useData();
-  const { kpis: adminKpis, understandingTrend, cohortHealth, needsAttention, recentActivity } = admin;
+  const { kpis: adminKpis, understandingTrend, understandingSeries, cohortHealth, needsAttention, recentActivity } = admin;
+  const [range, setRange] = useState(1); // default: Months
+  const mode: Range = RANGES[range] ?? "Months";
+  const chartData = useMemo(
+    () => bucketSeries(understandingSeries, mode) ?? understandingTrend,
+    [understandingSeries, mode, understandingTrend],
+  );
+  const avg = chartData.length ? Math.round(chartData.reduce((a, c) => a + c.v, 0) / chartData.length) : 0;
   return (
     <div className="animate-fade-up space-y-7">
       <header className="flex items-start justify-between gap-4">
@@ -54,19 +89,23 @@ export default function AdminOverview() {
             <div>
               <h3 className="text-title text-ink">Understanding over time</h3>
               <p className="mt-1 text-label text-soft">
-                {understandingTrend.length ? (
-                  <>74 average <span className="text-faint">· +18 over 90 days</span></>
+                {chartData.length ? (
+                  <>
+                    {avg} average{" "}
+                    <span className="text-faint">· grouped by {mode.toLowerCase().slice(0, -1)}</span>
+                  </>
                 ) : (
                   <span className="text-faint">No sessions recorded yet</span>
                 )}
               </p>
             </div>
             <div className="flex rounded-md border border-border p-0.5 text-caption">
-              {["Weeks", "Months", "Quarters"].map((t, i) => (
+              {RANGES.map((t, i) => (
                 <button
                   key={t}
+                  onClick={() => setRange(i)}
                   className={
-                    i === 1 ? "rounded bg-[#3c315b]/10 px-2.5 py-1 text-ink" : "px-2.5 py-1 text-faint"
+                    i === range ? "rounded bg-[#3c315b]/10 px-2.5 py-1 text-ink" : "px-2.5 py-1 text-faint"
                   }
                 >
                   {t}
@@ -75,13 +114,13 @@ export default function AdminOverview() {
             </div>
           </div>
           <div className="mt-5 h-56">
-            {understandingTrend.length === 0 ? (
+            {chartData.length === 0 ? (
               <div className="grid h-full place-items-center text-body-s text-faint">
                 Understanding trends appear as your team completes sessions.
               </div>
             ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={understandingTrend} margin={{ left: -28, right: 4, top: 4 }}>
+              <AreaChart data={chartData} margin={{ left: -28, right: 4, top: 4 }}>
                 <defs>
                   <linearGradient id="u" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3c315b" stopOpacity={0.18} />
@@ -89,7 +128,7 @@ export default function AdminOverview() {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="m" tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis domain={[40, 100]} tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
                 <Tooltip
                   cursor={{ stroke: "#e0dde9" }}
                   contentStyle={{

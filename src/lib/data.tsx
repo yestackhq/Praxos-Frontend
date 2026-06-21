@@ -13,7 +13,7 @@ import { ClerkDataProvider } from "./ClerkData";
  */
 
 export type PathItem = (typeof mock.learningPath)[number] & { docId?: number | null };
-export type Person = (typeof mock.people)[number] & { id?: number };
+export type Person = (typeof mock.people)[number] & { id?: number; team?: string };
 export type PendingInvite = { id: number; email: string; role: string };
 export type AdminDoc = (typeof mock.adminDocuments)[number] & { id?: number };
 export type CohortDoc = { id: number; name: string };
@@ -67,6 +67,7 @@ export interface Bundle {
     kpis: typeof mock.adminKpis;
     understandingKpis: typeof mock.adminKpis;
     understandingTrend: typeof mock.understandingTrend;
+    understandingSeries: { date: string; score: number }[];
     cohortHealth: typeof mock.cohortHealth;
     teamHealth: { name: string; value: number }[];
     needsAttention: typeof mock.needsAttention;
@@ -94,6 +95,7 @@ export const demoBundle: Bundle = {
     kpis: mock.adminKpis,
     understandingKpis: mock.adminKpis,
     understandingTrend: mock.understandingTrend,
+    understandingSeries: [],
     cohortHealth: mock.cohortHealth,
     teamHealth: mock.cohortHealth.map((c) => ({ name: c.name, value: c.value })),
     needsAttention: mock.needsAttention,
@@ -129,6 +131,7 @@ export function emptyUserBundle(name: string, email: string): Bundle {
       kpis: mock.adminKpis.map((k) => ({ ...k, value: k.value.includes("%") ? "0%" : "0", hint: "no data yet" })),
       understandingKpis: mock.adminKpis.map((k) => ({ ...k, value: k.value.includes("%") ? "0%" : "0", hint: "no data yet" })),
       understandingTrend: [],
+      understandingSeries: [],
       cohortHealth: [],
       teamHealth: [],
       needsAttention: [],

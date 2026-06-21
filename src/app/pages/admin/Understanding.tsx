@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
-import { TrendingUp, Users, UserRound } from "lucide-react";
-import { PageHeader } from "@/ui/page";
+import { TrendingUp, Users, UserRound, Search } from "lucide-react";
+import { PageHeader, Table, Th, Td } from "@/ui/page";
 import { Card } from "@/ui/Card";
 import { Avatar, ProgressBar } from "@/ui/data";
+import { Dropdown } from "@/ui/Dropdown";
 import { EmptyState } from "@/ui/EmptyState";
 import { cn } from "@/lib/utils";
-import { useData } from "@/lib/data";
+import { useData, type Person } from "@/lib/data";
+import { PersonDrawer } from "./PersonDrawer";
 
 function GroupBars({ rows, emptyHint }: { rows: { name: string; value: number }[]; emptyHint: string }) {
   if (rows.length === 0) return <p className="mt-4 text-body-s text-faint">{emptyHint}</p>;
@@ -25,16 +27,39 @@ function GroupBars({ rows, emptyHint }: { rows: { name: string; value: number }[
   );
 }
 
+const cleanCohort = (c?: string) => (c && !["—", "-", ""].includes(c) ? c : "");
+const uniq = (vals: string[]) => [...new Set(vals.filter(Boolean))].sort();
+
 export default function Understanding() {
   const { admin } = useData();
   const { understandingKpis, understandingTrend, cohortHealth, teamHealth, needsAttention, people } = admin;
   const [view, setView] = useState<"group" | "individual">("group");
+  const [selected, setSelected] = useState<Person | null>(null);
+  const [q, setQ] = useState("");
+  const [teamF, setTeamF] = useState("");
+  const [cohortF, setCohortF] = useState("");
+  const [roleF, setRoleF] = useState("");
 
-  const learners = [...people]
-    .filter((p) => (p.understanding ?? 0) > 0)
-    .sort((a, b) => b.understanding - a.understanding);
+  const teams = useMemo(() => uniq(people.map((p) => p.team || "")), [people]);
+  const cohorts = useMemo(() => uniq(people.map((p) => cleanCohort(p.cohort))), [people]);
+
+  const filtered = useMemo(
+    () =>
+      people
+        .filter((p) => {
+          const s = q.trim().toLowerCase();
+          return !s || p.name.toLowerCase().includes(s) || p.email.toLowerCase().includes(s);
+        })
+        .filter((p) => !teamF || (p.team || "") === teamF)
+        .filter((p) => !cohortF || cleanCohort(p.cohort) === cohortF)
+        .filter((p) => !roleF || p.role === roleF)
+        .sort((a, b) => b.understanding - a.understanding),
+    [people, q, teamF, cohortF, roleF],
+  );
+
   const avg = understandingKpis[0]?.value ?? "0";
-  const empty = understandingTrend.length === 0 && learners.length === 0;
+  const measured = people.filter((p) => (p.understanding ?? 0) > 0).length;
+  const empty = understandingTrend.length === 0 && measured === 0;
 
   if (empty) {
     return (
@@ -51,6 +76,15 @@ export default function Understanding() {
       </div>
     );
   }
+
+  const teamOpts = [{ value: "", label: "All teams" }, ...teams.map((t) => ({ value: t, label: t }))];
+  const cohortOpts = [{ value: "", label: "All cohorts" }, ...cohorts.map((c) => ({ value: c, label: c }))];
+  const roleOpts = [
+    { value: "", label: "All roles" },
+    { value: "Learner", label: "Learner" },
+    { value: "Manager", label: "Manager" },
+    { value: "Admin", label: "Admin" },
+  ];
 
   return (
     <div className="animate-fade-up space-y-7">
@@ -97,7 +131,7 @@ export default function Understanding() {
         </div>
       </Card>
 
-      {/* View toggle: team/group vs individual */}
+      {/* View toggle: by group vs individual */}
       <div className="flex gap-2">
         {([
           ["group", "By group", Users],
@@ -128,29 +162,69 @@ export default function Understanding() {
           </Card>
         </div>
       ) : (
-        <Card className="p-6">
-          <h3 className="text-title text-ink">Understanding by learner</h3>
-          {learners.length === 0 ? (
-            <p className="mt-4 text-body-s text-faint">No learners measured yet.</p>
-          ) : (
-            <ul className="mt-5 divide-y divide-hairline">
-              {learners.map((p) => (
-                <li key={p.email} className="flex items-center gap-3 py-3.5">
-                  <Avatar name={p.name} size={34} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-label text-ink">{p.name}</p>
-                    <p className="truncate text-caption text-faint">
-                      {p.cohort && p.cohort !== "-" && p.cohort !== "—" ? p.cohort : "No cohort"}
-                    </p>
-                  </div>
-                  <span className="hidden w-32 shrink-0 sm:block">
-                    <ProgressBar value={p.understanding} />
-                  </span>
-                  <span className="nums w-8 shrink-0 text-right text-label text-ink">{p.understanding}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <Card className="overflow-hidden p-0">
+          {/* Notion-style filter toolbar */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-hairline p-4">
+            <div className="relative min-w-[180px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search people…"
+                className="h-9 w-full rounded-md border border-border bg-[#3c315b]/[0.02] pl-9 pr-3 text-label text-ink outline-none focus:border-soft"
+              />
+            </div>
+            <div className="w-40"><Dropdown value={teamF} onChange={setTeamF} options={teamOpts} /></div>
+            <div className="w-40"><Dropdown value={cohortF} onChange={setCohortF} options={cohortOpts} /></div>
+            <div className="w-36"><Dropdown value={roleF} onChange={setRoleF} options={roleOpts} /></div>
+          </div>
+
+          <div className="px-4 py-2">
+            {filtered.length === 0 ? (
+              <p className="py-10 text-center text-body-s text-faint">No people match these filters.</p>
+            ) : (
+              <Table
+                head={
+                  <>
+                    <Th>Person</Th>
+                    <Th>Team</Th>
+                    <Th>Cohort</Th>
+                    <Th>Understanding</Th>
+                    <Th className="text-right">Documents</Th>
+                  </>
+                }
+              >
+                {filtered.map((p) => (
+                  <tr
+                    key={p.email}
+                    onClick={() => setSelected(p)}
+                    className="cursor-pointer transition-colors hover:bg-[#3c315b]/[0.03]"
+                  >
+                    <Td className="text-ink">
+                      <span className="flex items-center gap-3">
+                        <Avatar name={p.name} size={30} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-label text-ink">{p.name}</span>
+                          <span className="block truncate text-caption text-faint">{p.role}</span>
+                        </span>
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap">{p.team || "—"}</Td>
+                    <Td className="whitespace-nowrap">{cleanCohort(p.cohort) || "—"}</Td>
+                    <Td>
+                      <span className="flex items-center gap-3">
+                        <span className="w-28">
+                          <ProgressBar value={p.understanding} />
+                        </span>
+                        <span className="nums text-label text-ink">{p.understanding}</span>
+                      </span>
+                    </Td>
+                    <Td className="nums text-right">{p.documents}</Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+          </div>
         </Card>
       )}
 
@@ -177,6 +251,8 @@ export default function Understanding() {
           </ul>
         )}
       </Card>
+
+      <PersonDrawer person={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
