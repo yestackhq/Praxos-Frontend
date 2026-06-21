@@ -52,14 +52,15 @@ export function SettingsModal({ tab }: { tab: SettingsTab }) {
         <ModalClose onClose={close} />
       </div>
 
-      <div className="flex h-[480px]">
-        <nav className="w-48 shrink-0 border-r border-hairline p-3">
+      <div className="flex min-w-0 flex-col md:h-[480px] md:flex-row">
+        {/* Tabs: a horizontal scroller on mobile, a left rail from md up. */}
+        <nav className="flex min-w-0 shrink-0 gap-1 overflow-x-auto border-b border-hairline p-2 md:w-48 md:flex-col md:gap-0 md:overflow-x-visible md:border-b-0 md:border-r md:p-3">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => navigate(t.path)}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-label transition-colors",
+                "flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2 text-label transition-colors md:w-full",
                 t.id === tab ? "bg-[#3c315b]/8 text-ink" : "text-soft hover:bg-[#3c315b]/5 hover:text-ink",
               )}
             >
@@ -69,7 +70,7 @@ export function SettingsModal({ tab }: { tab: SettingsTab }) {
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1 overflow-y-auto p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto p-5 max-h-[58vh] md:max-h-none md:p-6">
           {tab === "account" && <AccountTab />}
           {tab === "workspace" && <WorkspaceTab />}
           {tab === "members" && <MembersTab />}
@@ -143,12 +144,12 @@ function WorkspaceTab() {
         <span className="mb-1.5 block text-caption text-faint">Default teaching language</span>
         <Dropdown value={lang} onChange={setLang} options={LANGS} />
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-hairline p-4">
+      <div className="flex flex-col items-start gap-3 rounded-lg border border-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-label text-ink">Delete workspace</p>
           <p className="text-caption text-faint">Permanently remove all documents, people and data.</p>
         </div>
-        <Button variant="danger" size="sm">
+        <Button variant="danger" size="sm" className="shrink-0">
           Delete
         </Button>
       </div>

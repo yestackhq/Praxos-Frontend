@@ -22,7 +22,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#3c315b]/30 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#3c315b]/30 p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
     >
       <div
@@ -31,7 +31,7 @@ export function Modal({
         aria-labelledby={labelledBy}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "animate-fade-up w-full rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60",
+          "animate-fade-up w-full min-w-0 rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60",
           className,
         )}
       >
