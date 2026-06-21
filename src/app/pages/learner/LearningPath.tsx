@@ -42,6 +42,7 @@ export default function LearningPath() {
           const m = meta[item.status];
           const Icon = m.icon;
           const active = item.status === "in_progress";
+          const startable = active || item.status === "up_next";
           return (
             <li key={item.title} className="relative">
               <Card
@@ -77,7 +78,7 @@ export default function LearningPath() {
                     </div>
                   )}
                 </div>
-                {active && (
+                {startable && (
                   <Link
                     to={
                       item.docId
@@ -86,7 +87,7 @@ export default function LearningPath() {
                     }
                     className={buttonVariants({ size: "sm", className: "shrink-0" })}
                   >
-                    <Play className="size-3.5" /> Resume
+                    <Play className="size-3.5" /> {active ? "Resume" : "Start"}
                   </Link>
                 )}
               </Card>
