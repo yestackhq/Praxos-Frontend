@@ -15,7 +15,7 @@ const nav = [
 ];
 
 export function AdminLayout() {
-  const { account } = useData();
+  const { account, role } = useData();
   return (
     <AppShell
       nav={
@@ -47,7 +47,7 @@ export function AdminLayout() {
           </Link>
         </>
       }
-      footer={<ShellUser name={account.name} sub={account.role} />}
+      footer={<ShellUser name={account.name} sub={account.role} isAdmin={role === "Admin"} />}
     />
   );
 }

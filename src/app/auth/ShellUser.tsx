@@ -9,9 +9,9 @@ import { clerkEnabled } from "./clerkEnabled";
  * User card at the bottom of the app shells. The WHOLE card is the trigger:
  * click anywhere on it to open the account menu (manage account / settings / sign out).
  */
-export function ShellUser({ name, sub }: { name: string; sub: string }) {
+export function ShellUser({ name, sub, isAdmin = false }: { name: string; sub: string; isAdmin?: boolean }) {
   if (!clerkEnabled) return <StaticCard name={name} sub={sub} />;
-  return <ClerkCard name={name} sub={sub} />;
+  return <ClerkCard name={name} sub={sub} isAdmin={isAdmin} />;
 }
 
 function StaticCard({ name, sub }: { name: string; sub: string }) {
@@ -32,7 +32,7 @@ function Identity({ name, sub }: { name: string; sub: string }) {
   );
 }
 
-function ClerkCard({ name, sub }: { name: string; sub: string }) {
+function ClerkCard({ name, sub, isAdmin }: { name: string; sub: string; isAdmin: boolean }) {
   const { isSignedIn, user } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const navigate = useNavigate();
@@ -74,7 +74,9 @@ function ClerkCard({ name, sub }: { name: string; sub: string }) {
       {open && (
         <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-2xl shadow-black/60">
           <MenuItem icon={UserCog} label="Manage account" onClick={() => { setOpen(false); openUserProfile(); }} />
-          <MenuItem icon={Settings} label="Workspace settings" onClick={() => { setOpen(false); navigate("/admin/settings"); }} />
+          {isAdmin && (
+            <MenuItem icon={Settings} label="Workspace settings" onClick={() => { setOpen(false); navigate("/admin/settings"); }} />
+          )}
           <div className="my-1 h-px bg-hairline" />
           <MenuItem icon={LogOut} label="Sign out" onClick={() => { setOpen(false); void signOut({ redirectUrl: "/" }); }} />
         </div>

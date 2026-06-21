@@ -27,7 +27,7 @@ export default function LearnerHome() {
           <h1 className="text-h2 text-ink">Good morning, {learner.firstName}</h1>
           <p className="mt-1.5 text-body text-soft">
             {continueLearning
-              ? `You are ${continueLearning.understanding}% through ${continueLearning.doc}. Pick up where you left off.`
+              ? `You're ${continueLearning.understanding}% of the way through — pick up where you left off.`
               : "Welcome to Praxos. Add a document to start your first learning session."}
           </p>
         </div>
@@ -43,7 +43,7 @@ export default function LearnerHome() {
         <Card className="relative overflow-hidden p-7">
           <div className="relative z-10 max-w-xl">
             <p className="eyebrow">Continue learning</p>
-            <h2 className="mt-3 text-h3 text-ink">{continueLearning.doc}</h2>
+            <h2 className="mt-3 truncate text-h3 text-ink" title={continueLearning.doc}>{continueLearning.doc}</h2>
             <p className="mt-2 max-w-md text-body-s text-soft">
               {continueLearning.position}. {continueLearning.remaining}
             </p>

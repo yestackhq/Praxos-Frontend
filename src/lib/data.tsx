@@ -12,7 +12,7 @@ import { ClerkDataProvider } from "./ClerkData";
  * A signed-in user never falls back to the demo data.
  */
 
-export type PathItem = (typeof mock.learningPath)[number];
+export type PathItem = (typeof mock.learningPath)[number] & { docId?: number | null };
 export type Person = (typeof mock.people)[number] & { id?: number };
 export type PendingInvite = { id: number; email: string; role: string };
 export type AdminDoc = (typeof mock.adminDocuments)[number] & { id?: number };
@@ -47,7 +47,7 @@ export interface Team {
 export interface Bundle {
   mode: "demo" | "user" | "loading";
   needsOnboarding: boolean;
-  workspace: { name: string; plan: string };
+  workspace: { name: string; plan: string; slug?: string };
   learner: {
     name: string;
     firstName: string;
@@ -145,7 +145,7 @@ export interface DataActions {
   invite: (email: string, role: string) => Promise<void>;
   setRole: (memberId: number, role: string) => Promise<void>;
   revokeInvite: (inviteId: number) => Promise<void>;
-  completeOnboarding: (workspaceName?: string) => Promise<void>;
+  completeOnboarding: (workspaceName?: string, slug?: string) => Promise<void>;
   uploadDocument: (name: string, sections?: number) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
   deleteDocument: (id: number) => Promise<void>;

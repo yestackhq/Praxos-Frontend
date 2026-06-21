@@ -43,10 +43,10 @@ export default function MyDocuments() {
           <tr key={d.name} className="transition-colors hover:bg-[#3c315b]/[0.02]">
             <Td className="text-ink">
               <span className="flex items-center gap-3">
-                <span className="grid size-8 place-items-center rounded-md border border-hairline text-faint">
+                <span className="grid size-8 shrink-0 place-items-center rounded-md border border-hairline text-faint">
                   <FileText className="size-4" />
                 </span>
-                {d.name}
+                <span className="block max-w-[12rem] truncate sm:max-w-[24rem]" title={d.name}>{d.name}</span>
               </span>
             </Td>
             <Td className="nums">{d.pages}</Td>

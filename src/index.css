@@ -65,7 +65,7 @@ body {
     @apply rounded-xl border border-hairline bg-surface;
   }
   .eyebrow {
-    @apply text-eyebrow uppercase text-faint;
+    @apply text-eyebrow font-medium tracking-normal text-faint;
   }
   /* Tabular figures for metrics & tables */
   .nums {

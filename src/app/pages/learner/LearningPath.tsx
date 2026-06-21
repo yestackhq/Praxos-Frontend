@@ -63,8 +63,10 @@ export default function LearningPath() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
-                    <p className="text-title text-ink">{item.title}</p>
-                    <Badge tone={m.tone}>{m.label}</Badge>
+                    <p className="min-w-0 flex-1 truncate text-title text-ink" title={item.title}>{item.title}</p>
+                    <span className="shrink-0">
+                      <Badge tone={m.tone}>{m.label}</Badge>
+                    </span>
                   </div>
                   <p className="mt-0.5 text-caption text-faint">
                     {item.sections} sections · step {i + 1} of {learningPath.length}
@@ -76,7 +78,14 @@ export default function LearningPath() {
                   )}
                 </div>
                 {active && (
-                  <Link to="/app/session" className={buttonVariants({ size: "sm" })}>
+                  <Link
+                    to={
+                      item.docId
+                        ? `/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}`
+                        : "/app/session"
+                    }
+                    className={buttonVariants({ size: "sm", className: "shrink-0" })}
+                  >
                     <Play className="size-3.5" /> Resume
                   </Link>
                 )}

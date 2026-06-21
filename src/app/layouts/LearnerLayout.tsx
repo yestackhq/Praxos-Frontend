@@ -52,7 +52,7 @@ export function LearnerLayout() {
       }
       // Show the user's real role (e.g. "Workspace owner") — not a hardcoded
       // "Learner" — so an admin in their own learning view isn't mislabelled.
-      footer={<ShellUser name={learner.name} sub={account.role} />}
+      footer={<ShellUser name={learner.name} sub={account.role} isAdmin={isAdmin} />}
     />
   );
 }

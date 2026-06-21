@@ -95,8 +95,8 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
         await apiSend("DELETE", `/api/team/invites/${inviteId}`, null, await getToken());
         await load();
       },
-      completeOnboarding: async (workspaceName?: string) => {
-        await apiSend("POST", "/api/onboarding/complete", { workspaceName }, await getToken());
+      completeOnboarding: async (workspaceName?: string, slug?: string) => {
+        await apiSend("POST", "/api/onboarding/complete", { workspaceName, slug }, await getToken());
         await load();
       },
       uploadDocument: async (name: string, sections = 0) => {

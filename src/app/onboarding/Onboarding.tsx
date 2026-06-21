@@ -45,6 +45,10 @@ export default function Onboarding() {
   const [name, setName] = useState(
     workspace.name && !workspace.name.endsWith("'s workspace") ? workspace.name : `${learner.firstName}'s team`,
   );
+  const slugify = (v: string) =>
+    v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+  const [slug, setSlug] = useState("");
+  const effectiveSlug = slug || slugify(name) || "workspace";
 
   // invites
   const [emails, setEmails] = useState<string[]>([]);
@@ -74,7 +78,7 @@ export default function Onboarding() {
   const finish = async () => {
     setBusy(true);
     try {
-      await completeOnboarding(name.trim() || undefined);
+      await completeOnboarding(name.trim() || undefined, effectiveSlug || undefined);
       navigate("/admin");
     } finally {
       setBusy(false);
@@ -99,6 +103,17 @@ export default function Onboarding() {
             </p>
             <Field label="Workspace name">
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Inc." className={input} />
+            </Field>
+            <Field label="Workspace link">
+              <div className="flex items-center overflow-hidden rounded-md border border-border bg-[#3c315b]/[0.02] focus-within:border-soft">
+                <span className="whitespace-nowrap pl-3.5 text-caption text-faint">praxos.up.railway.app/</span>
+                <input
+                  value={effectiveSlug}
+                  onChange={(e) => setSlug(slugify(e.target.value))}
+                  placeholder="acme"
+                  className="h-11 min-w-0 flex-1 bg-transparent px-1 text-label text-ink outline-none placeholder:text-faint"
+                />
+              </div>
             </Field>
             <Button className="mt-2 w-full" disabled={!name.trim()} onClick={() => setStep(2)}>
               Continue

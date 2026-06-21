@@ -33,7 +33,9 @@ export default function PastSessions() {
       >
         {pastSessions.map((s, i) => (
           <tr key={i} className="transition-colors hover:bg-[#3c315b]/[0.02]">
-            <Td className="text-ink">{s.doc}</Td>
+            <Td className="text-ink">
+              <span className="block max-w-[13rem] truncate sm:max-w-[26rem]" title={s.doc}>{s.doc}</span>
+            </Td>
             <Td>{s.date}</Td>
             <Td>
               <span
