@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { motion, useScroll, useMotionValueEvent, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { ReactLenis } from "lenis/react";
@@ -60,18 +60,27 @@ export default function Landing() {
       <Footer />
     </>
   );
+  const content = reduce ? (
+    page
+  ) : (
+    <ReactLenis root options={{ lerp: 0.09, smoothWheel: true, wheelMultiplier: 1, anchors: { offset: -80 } }}>
+      {page}
+    </ReactLenis>
+  );
   return (
     <div
       className="min-h-screen overflow-x-clip tracking-[-0.011em] text-[#1c1c1c] antialiased"
       style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif", background: C.paper }}
     >
-      {reduce ? (
-        page
-      ) : (
-        <ReactLenis root options={{ lerp: 0.09, smoothWheel: true, wheelMultiplier: 1, anchors: { offset: -80 } }}>
-          {page}
-        </ReactLenis>
+      {/* A signed-in user who lands on the marketing page (OAuth callback,
+          bookmark, logo click) is bounced straight to their dashboard. Rendered
+          alongside the page so signed-out visitors never see a blank flash. */}
+      {clerkEnabled && (
+        <SignedIn>
+          <Navigate to="/launch" replace />
+        </SignedIn>
       )}
+      {content}
     </div>
   );
 }
