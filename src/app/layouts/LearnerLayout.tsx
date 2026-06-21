@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { House, Route, History, FileText, LayoutGrid } from "lucide-react";
 import { ShellUser } from "@/app/auth/ShellUser";
+import { WorkspaceLoader } from "@/ui/WorkspaceLoader";
 import { cn } from "@/lib/utils";
 import { useData } from "@/lib/data";
 import { AppShell } from "./AppShell";
@@ -31,7 +32,8 @@ function SideLink({ to, label, icon: Icon, end }: (typeof nav)[number]) {
 }
 
 export function LearnerLayout() {
-  const { learner, account, role } = useData();
+  const { learner, account, role, mode } = useData();
+  if (mode === "loading") return <WorkspaceLoader />;
   const isAdmin = role === "Admin";
   return (
     <AppShell

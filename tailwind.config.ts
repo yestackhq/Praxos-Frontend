@@ -82,11 +82,22 @@ export default {
           from: { opacity: "0", filter: "blur(6px)", transform: "translateY(8px)" },
           to: { opacity: "1", filter: "blur(0)", transform: "translateY(0)" },
         },
+        "blur-in": {
+          from: { opacity: "0", filter: "blur(8px)" },
+          to: { opacity: "1", filter: "blur(0)" },
+        },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
         spinslow: { to: { transform: "rotate(360deg)" } },
       },
       animation: {
         "fade-up": "fade-up 0.5s cubic-bezier(0.22,1,0.36,1) both",
+        "blur-in": "blur-in 0.55s cubic-bezier(0.22,1,0.36,1) both",
+        "slide-in-right": "slide-in-right 0.28s cubic-bezier(0.22,1,0.36,1) both",
         spinslow: "spinslow 22s linear infinite",
+        "spin-soft": "spinslow 1.4s linear infinite",
       },
     },
   },

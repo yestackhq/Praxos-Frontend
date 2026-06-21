@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Logo } from "@/ui/Logo";
+import { WorkspaceLoader } from "@/ui/WorkspaceLoader";
 import { useData } from "@/lib/data";
 
 /**
@@ -30,10 +30,5 @@ export function LaunchRedirect() {
     navigate(isAdmin ? "/admin" : "/app", { replace: true });
   }, [mode, needsOnboarding, role, navigate]);
 
-  return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-bg text-ink">
-      <Logo showWord={false} size={28} />
-      <p className="text-caption text-faint">Opening your workspace…</p>
-    </div>
-  );
+  return <WorkspaceLoader />;
 }

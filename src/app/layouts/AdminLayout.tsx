@@ -1,6 +1,7 @@
 import { NavLink, Link } from "react-router-dom";
 import { LayoutGrid, TrendingUp, Users, UserRound, FileText, Settings } from "lucide-react";
 import { ShellUser } from "@/app/auth/ShellUser";
+import { WorkspaceLoader } from "@/ui/WorkspaceLoader";
 import { cn } from "@/lib/utils";
 import { useData } from "@/lib/data";
 import { AppShell } from "./AppShell";
@@ -15,7 +16,8 @@ const nav = [
 ];
 
 export function AdminLayout() {
-  const { account, role } = useData();
+  const { account, role, mode } = useData();
+  if (mode === "loading") return <WorkspaceLoader />;
   return (
     <AppShell
       nav={

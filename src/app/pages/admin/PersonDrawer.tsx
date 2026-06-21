@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { X, Users, UserRound, FileText, Loader2 } from "lucide-react";
 import { Avatar, Badge, ProgressBar, ScoreRing } from "@/ui/data";
@@ -100,10 +101,13 @@ export function PersonDrawer({ person, onClose }: { person: Person | null; onClo
   const cohort = person.cohort && !["—", "-", ""].includes(person.cohort) ? person.cohort : "";
   const team = person.team || "";
 
-  return (
+  // Portal to <body> so the backdrop + drawer are positioned against the viewport
+  // — not a transformed ancestor (page `animate-fade-up`), which was clipping the
+  // backdrop to the content area.
+  return createPortal(
     <>
-      <button aria-label="Close" onClick={onClose} className="fixed inset-0 z-40 bg-black/30" />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-96 max-w-full flex-col border-l border-hairline bg-bg shadow-2xl shadow-black/20">
+      <button aria-label="Close" onClick={onClose} className="animate-blur-in fixed inset-0 z-40 bg-black/30" />
+      <aside className="animate-slide-in-right fixed inset-y-0 right-0 z-50 flex w-96 max-w-full flex-col border-l border-hairline bg-bg">
         <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
           <span className="text-caption text-faint">Learner</span>
           <button
@@ -155,6 +159,7 @@ export function PersonDrawer({ person, onClose }: { person: Person | null; onClo
           )}
         </div>
       </aside>
-    </>
+    </>,
+    document.body,
   );
 }
