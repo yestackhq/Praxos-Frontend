@@ -1,29 +1,52 @@
+import { useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Users, UserRound } from "lucide-react";
 import { PageHeader } from "@/ui/page";
 import { Card } from "@/ui/Card";
 import { Avatar, ProgressBar } from "@/ui/data";
-import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { cn } from "@/lib/utils";
 import { useData } from "@/lib/data";
+
+function GroupBars({ rows, emptyHint }: { rows: { name: string; value: number }[]; emptyHint: string }) {
+  if (rows.length === 0) return <p className="mt-4 text-body-s text-faint">{emptyHint}</p>;
+  return (
+    <ul className="mt-5 space-y-5">
+      {rows.map((c) => (
+        <li key={c.name}>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate text-label text-ink">{c.name}</span>
+            <span className="nums text-caption text-soft">{c.value || "—"}</span>
+          </div>
+          <ProgressBar value={c.value} />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function Understanding() {
   const { admin } = useData();
-  const { understandingTrend, cohortHealth, needsAttention, people } = admin;
-  const measured = people.filter((p) => p.role === "Learner").length;
-  const empty = understandingTrend.length === 0 && cohortHealth.length === 0;
+  const { understandingKpis, understandingTrend, cohortHealth, teamHealth, needsAttention, people } = admin;
+  const [view, setView] = useState<"group" | "individual">("group");
+
+  const learners = [...people]
+    .filter((p) => (p.understanding ?? 0) > 0)
+    .sort((a, b) => b.understanding - a.understanding);
+  const avg = understandingKpis[0]?.value ?? "0";
+  const empty = understandingTrend.length === 0 && learners.length === 0;
 
   if (empty) {
     return (
       <div className="animate-fade-up">
         <PageHeader
           title="Understanding"
-          subtitle="How well your team grasps the material, over time and by group."
+          subtitle="How well your workspace grasps the material — over time, by group, and by person."
         />
         <EmptyState
           icon={TrendingUp}
           title="No understanding data yet"
-          body="Once your team completes a few sessions, you'll see trends, cohort breakdowns and who's falling behind here."
+          body="Once your team completes a few sessions, trends, group breakdowns and who's falling behind show up here."
         />
       </div>
     );
@@ -33,17 +56,12 @@ export default function Understanding() {
     <div className="animate-fade-up space-y-7">
       <PageHeader
         title="Understanding"
-        subtitle="How well your team grasps the material, over time and by group."
+        subtitle="How well your workspace grasps the material — over time, by group, and by person."
       />
 
-      {/* KPIs */}
+      {/* KPIs — real, workspace-scoped */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-hairline bg-hairline md:grid-cols-4">
-        {[
-          { label: "Average understanding", value: "74", hint: "↗ +18 over 90 days" },
-          { label: "Learners measured", value: String(measured || 128), hint: "across all cohorts" },
-          { label: "Topics tracked", value: "18", hint: "from 6 documents" },
-          { label: "Mastery rate", value: "61%", hint: "demonstrated, not guessed" },
-        ].map((k) => (
+        {understandingKpis.map((k) => (
           <div key={k.label} className="bg-surface px-5 py-5">
             <p className="text-caption text-faint">{k.label}</p>
             <p className="nums mt-2 text-[34px] font-semibold leading-none tracking-tight text-ink">{k.value}</p>
@@ -56,7 +74,7 @@ export default function Understanding() {
       <Card className="p-6">
         <h3 className="text-title text-ink">Understanding over time</h3>
         <p className="mt-1 text-label text-soft">
-          74 average <span className="text-faint">· measured only when a learner explains it in their own words</span>
+          {avg} average <span className="text-faint">· measured only when a learner explains it in their own words</span>
         </p>
         <div className="mt-5 h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -68,7 +86,7 @@ export default function Understanding() {
                 </linearGradient>
               </defs>
               <XAxis dataKey="m" tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
-              <YAxis domain={[40, 100]} tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
               <Tooltip
                 cursor={{ stroke: "#e0dde9" }}
                 contentStyle={{ background: "#ffffff", border: "1px solid #e0dde9", borderRadius: 10, fontSize: 12, color: "#3c315b" }}
@@ -79,48 +97,86 @@ export default function Understanding() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* By cohort */}
-        <Card className="p-6">
-          <h3 className="text-title text-ink">Understanding by cohort</h3>
-          <ul className="mt-5 space-y-5">
-            {cohortHealth.map((c) => (
-              <li key={c.name}>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-label text-ink">{c.name}</span>
-                  <span className="nums text-caption text-soft">{c.value}</span>
-                </div>
-                <ProgressBar value={c.value} />
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {/* View toggle: team/group vs individual */}
+      <div className="flex gap-2">
+        {([
+          ["group", "By group", Users],
+          ["individual", "Individual", UserRound],
+        ] as const).map(([v, label, Icon]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-label transition-colors",
+              view === v ? "border-transparent bg-ink text-bg" : "border-border text-soft hover:border-soft hover:text-ink",
+            )}
+          >
+            <Icon className="size-4" /> {label}
+          </button>
+        ))}
+      </div>
 
-        {/* Falling behind */}
+      {view === "group" ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="p-6">
+            <h3 className="text-title text-ink">Understanding by cohort</h3>
+            <GroupBars rows={cohortHealth} emptyHint="No cohorts yet — create one to compare groups." />
+          </Card>
+          <Card className="p-6">
+            <h3 className="text-title text-ink">Understanding by team</h3>
+            <GroupBars rows={teamHealth} emptyHint="No teams yet — create one to compare groups." />
+          </Card>
+        </div>
+      ) : (
         <Card className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-title text-ink">Falling behind</h3>
-            <span className="text-caption text-faint">below 55</span>
-          </div>
-          {needsAttention.length === 0 ? (
-            <p className="text-body-s text-faint">No one is falling behind.</p>
+          <h3 className="text-title text-ink">Understanding by learner</h3>
+          {learners.length === 0 ? (
+            <p className="mt-4 text-body-s text-faint">No learners measured yet.</p>
           ) : (
-            <ul className="divide-y divide-hairline">
-              {needsAttention.map((p) => (
-                <li key={p.name} className="flex items-center gap-3 py-3">
+            <ul className="mt-5 divide-y divide-hairline">
+              {learners.map((p) => (
+                <li key={p.email} className="flex items-center gap-3 py-3.5">
                   <Avatar name={p.name} size={34} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-label text-ink">{p.name}</p>
-                    <p className="truncate text-caption text-faint">{p.cohort}</p>
+                    <p className="truncate text-label text-ink">{p.name}</p>
+                    <p className="truncate text-caption text-faint">
+                      {p.cohort && p.cohort !== "-" && p.cohort !== "—" ? p.cohort : "No cohort"}
+                    </p>
                   </div>
-                  <span className="nums text-label text-soft">{p.score}</span>
-                  <Button variant="secondary" size="sm">Nudge</Button>
+                  <span className="hidden w-32 shrink-0 sm:block">
+                    <ProgressBar value={p.understanding} />
+                  </span>
+                  <span className="nums w-8 shrink-0 text-right text-label text-ink">{p.understanding}</span>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-      </div>
+      )}
+
+      {/* Falling behind — always visible */}
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-title text-ink">Falling behind</h3>
+          <span className="text-caption text-faint">below 55</span>
+        </div>
+        {needsAttention.length === 0 ? (
+          <p className="text-body-s text-faint">No one is falling behind.</p>
+        ) : (
+          <ul className="divide-y divide-hairline">
+            {needsAttention.map((p) => (
+              <li key={p.name} className="flex items-center gap-3 py-3">
+                <Avatar name={p.name} size={34} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-label text-ink">{p.name}</p>
+                  <p className="truncate text-caption text-faint">{p.cohort}</p>
+                </div>
+                <span className="nums text-label text-soft">{p.score}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

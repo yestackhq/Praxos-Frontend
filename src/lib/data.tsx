@@ -65,8 +65,10 @@ export interface Bundle {
   myDocuments: MyDoc[];
   admin: {
     kpis: typeof mock.adminKpis;
+    understandingKpis: typeof mock.adminKpis;
     understandingTrend: typeof mock.understandingTrend;
     cohortHealth: typeof mock.cohortHealth;
+    teamHealth: { name: string; value: number }[];
     needsAttention: typeof mock.needsAttention;
     recentActivity: typeof mock.recentActivity;
     cohorts: Cohort[];
@@ -90,8 +92,10 @@ export const demoBundle: Bundle = {
   myDocuments: mock.myDocuments,
   admin: {
     kpis: mock.adminKpis,
+    understandingKpis: mock.adminKpis,
     understandingTrend: mock.understandingTrend,
     cohortHealth: mock.cohortHealth,
+    teamHealth: mock.cohortHealth.map((c) => ({ name: c.name, value: c.value })),
     needsAttention: mock.needsAttention,
     recentActivity: mock.recentActivity,
     cohorts: mock.cohorts,
@@ -123,8 +127,10 @@ export function emptyUserBundle(name: string, email: string): Bundle {
     myDocuments: [],
     admin: {
       kpis: mock.adminKpis.map((k) => ({ ...k, value: k.value.includes("%") ? "0%" : "0", hint: "no data yet" })),
+      understandingKpis: mock.adminKpis.map((k) => ({ ...k, value: k.value.includes("%") ? "0%" : "0", hint: "no data yet" })),
       understandingTrend: [],
       cohortHealth: [],
+      teamHealth: [],
       needsAttention: [],
       recentActivity: [],
       cohorts: [],
