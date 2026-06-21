@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { TrendingUp, Users, UserRound, Search } from "lucide-react";
-import { PageHeader, Table, Th, Td } from "@/ui/page";
+import { PageHeader } from "@/ui/page";
 import { Card } from "@/ui/Card";
 import { Avatar, ProgressBar } from "@/ui/data";
 import { Dropdown } from "@/ui/Dropdown";
@@ -179,52 +179,59 @@ export default function Understanding() {
             <div className="w-36"><Dropdown value={roleF} onChange={setRoleF} options={roleOpts} /></div>
           </div>
 
-          <div className="px-4 py-2">
-            {filtered.length === 0 ? (
-              <p className="py-10 text-center text-body-s text-faint">No people match these filters.</p>
-            ) : (
-              <Table
-                head={
-                  <>
-                    <Th>Person</Th>
-                    <Th>Team</Th>
-                    <Th>Cohort</Th>
-                    <Th>Understanding</Th>
-                    <Th className="text-right">Documents</Th>
-                  </>
-                }
-              >
-                {filtered.map((p) => (
-                  <tr
-                    key={p.email}
-                    onClick={() => setSelected(p)}
-                    className="cursor-pointer transition-colors hover:bg-[#3c315b]/[0.03]"
-                  >
-                    <Td className="text-ink">
-                      <span className="flex items-center gap-3">
-                        <Avatar name={p.name} size={30} />
-                        <span className="min-w-0">
-                          <span className="block truncate text-label text-ink">{p.name}</span>
-                          <span className="block truncate text-caption text-faint">{p.role}</span>
-                        </span>
-                      </span>
-                    </Td>
-                    <Td className="whitespace-nowrap">{p.team || "—"}</Td>
-                    <Td className="whitespace-nowrap">{cleanCohort(p.cohort) || "—"}</Td>
-                    <Td>
-                      <span className="flex items-center gap-3">
-                        <span className="w-28">
-                          <ProgressBar value={p.understanding} />
-                        </span>
-                        <span className="nums text-label text-ink">{p.understanding}</span>
-                      </span>
-                    </Td>
-                    <Td className="nums text-right">{p.documents}</Td>
+          {filtered.length === 0 ? (
+            <p className="py-12 text-center text-body-s text-faint">No people match these filters.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[48rem] border-collapse text-left">
+                <thead>
+                  <tr className="bg-[#3c315b]/[0.03] text-caption text-faint">
+                    <th className="border-b border-hairline px-4 py-2.5 text-left font-medium">Person</th>
+                    <th className="border-b border-l border-hairline px-4 py-2.5 text-left font-medium">Team</th>
+                    <th className="border-b border-l border-hairline px-4 py-2.5 text-left font-medium">Cohort</th>
+                    <th className="border-b border-l border-hairline px-4 py-2.5 text-left font-medium">Understanding</th>
+                    <th className="border-b border-l border-hairline px-4 py-2.5 text-right font-medium">Documents</th>
                   </tr>
-                ))}
-              </Table>
-            )}
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.map((p) => (
+                    <tr
+                      key={p.email}
+                      onClick={() => setSelected(p)}
+                      className="cursor-pointer transition-colors hover:bg-[#3c315b]/[0.035]"
+                    >
+                      <td className="border-b border-hairline px-4 py-3">
+                        <span className="flex items-center gap-3">
+                          <Avatar name={p.name} size={30} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-label text-ink">{p.name}</span>
+                            <span className="block truncate text-caption text-faint">{p.email}</span>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap border-b border-l border-hairline px-4 py-3 text-label text-soft">
+                        {p.team || "—"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-l border-hairline px-4 py-3 text-label text-soft">
+                        {cleanCohort(p.cohort) || "—"}
+                      </td>
+                      <td className="border-b border-l border-hairline px-4 py-3">
+                        <span className="flex items-center gap-3">
+                          <span className="w-28">
+                            <ProgressBar value={p.understanding} />
+                          </span>
+                          <span className="nums text-label text-ink">{p.understanding}</span>
+                        </span>
+                      </td>
+                      <td className="nums border-b border-l border-hairline px-4 py-3 text-right text-soft">
+                        {p.documents}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       )}
 
