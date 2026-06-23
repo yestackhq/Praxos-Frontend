@@ -36,6 +36,7 @@ export const continueLearning = {
   position: "Document 2 of 5 in your path",
   remaining: "About 12 minutes of talking left to reach mastery.",
   understanding: 62,
+  progress: 40,
 };
 
 export const pastSessions = [

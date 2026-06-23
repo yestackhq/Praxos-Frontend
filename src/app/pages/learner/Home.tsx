@@ -27,7 +27,7 @@ export default function LearnerHome() {
           <h1 className="text-h2 text-ink">Good morning, {learner.firstName}</h1>
           <p className="mt-1.5 text-body text-soft">
             {continueLearning
-              ? `You're ${continueLearning.understanding}% of the way through — pick up where you left off.`
+              ? `You're ${continueLearning.progress}% of the way through — pick up where you left off.`
               : "Welcome to Praxos. Add a document to start your first learning session."}
           </p>
         </div>
