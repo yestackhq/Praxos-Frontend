@@ -48,8 +48,13 @@ function SessionShell({
   spokenWords,
   volumeRef,
   error,
+  ready,
+  isLast,
+  sectionIdx,
+  totalModules,
   onStart,
   onEnd,
+  onAdvance,
   onClose,
 }: {
   phase: SessionPhase;
@@ -60,8 +65,13 @@ function SessionShell({
   spokenWords: number;
   volumeRef?: RefObject<number>;
   error: string | null;
+  ready: boolean;
+  isLast: boolean;
+  sectionIdx: number;
+  totalModules: number;
   onStart: () => void;
   onEnd: () => void;
+  onAdvance: () => void;
   onClose: () => void;
 }) {
   const demonstrated = transcript.filter((t) => t.role === "learner").length;
@@ -82,9 +92,29 @@ function SessionShell({
             </span>
           )}
           {phase === "live" || phase === "scoring" ? (
-            <Button size="sm" onClick={onEnd} disabled={phase === "scoring"}>
-              {phase === "scoring" ? <Loader2 className="size-3.5 animate-spin" /> : null} End session
-            </Button>
+            <>
+              {/* When the tutor has signalled the learner is ready (and it isn't the last
+                  section), End stays available beside the primary "Next section". */}
+              {phase === "live" && ready && !isLast && (
+                <button onClick={onEnd} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  End session
+                </button>
+              )}
+              <Button
+                size="sm"
+                onClick={phase === "live" && ready && !isLast ? onAdvance : onEnd}
+                disabled={phase === "scoring"}
+              >
+                {phase === "scoring" ? <Loader2 className="size-3.5 animate-spin" /> : null}{" "}
+                {phase === "scoring"
+                  ? "Scoring"
+                  : ready
+                    ? isLast
+                      ? "Finish & score"
+                      : "Next section →"
+                    : "End session"}
+              </Button>
+            </>
           ) : (
             <button onClick={onClose} className={buttonVariants({ variant: "secondary", size: "sm" })}>
               Close
@@ -125,7 +155,10 @@ function SessionShell({
 
           {(phase === "live" || phase === "scoring") && (
             <>
-              <p className="text-caption text-faint">Now teaching · {docName}</p>
+              <p className="text-caption text-faint">
+                Now teaching · {docName}
+                {totalModules > 0 ? ` · Section ${sectionIdx + 1} of ${totalModules}` : ""}
+              </p>
               <div className="my-6 size-[17rem] sm:size-[24rem] lg:size-[32rem]">
                 <VoiceOrb
                   state={orbState(agentState, phase)}
@@ -139,7 +172,15 @@ function SessionShell({
                   <KaraokeCaption text={liveCaption} spoken={spokenWords} />
                 ) : (
                   <p className="text-h3 leading-snug text-faint">
-                    {phase === "scoring" ? "Scoring your understanding…" : "Listening…"}
+                    {phase === "scoring"
+                      ? "Scoring your understanding…"
+                      : agentState === "thinking"
+                        ? "Praxos is getting ready…"
+                        : ready
+                          ? isLast
+                            ? "All done — finish whenever you're ready."
+                            : "Ready for the next section whenever you are."
+                          : "Listening…"}
                   </p>
                 )}
               </div>
@@ -197,8 +238,22 @@ function LiveSessionInner({
   restart?: boolean;
 }) {
   const navigate = useNavigate();
-  const { phase, agentState, transcript, liveCaption, spokenWords, error, start, end, outputVolumeRef } =
-    useVoiceSession(docId, restart);
+  const {
+    phase,
+    agentState,
+    transcript,
+    liveCaption,
+    spokenWords,
+    error,
+    ready,
+    isLast,
+    sectionIdx,
+    totalModules,
+    start,
+    end,
+    advanceSection,
+    outputVolumeRef,
+  } = useVoiceSession(docId, restart);
   const onEnd = async () => {
     const result = await end();
     navigate("/app/summary", { state: { result, docName, back } });
@@ -213,8 +268,13 @@ function LiveSessionInner({
       spokenWords={spokenWords}
       volumeRef={outputVolumeRef}
       error={error}
+      ready={ready}
+      isLast={isLast}
+      sectionIdx={sectionIdx}
+      totalModules={totalModules}
       onStart={start}
       onEnd={onEnd}
+      onAdvance={() => void advanceSection()}
       onClose={() => (back ? navigate(back) : navigate(-1))}
     />
   );
@@ -242,8 +302,13 @@ export default function LiveSession() {
       liveCaption=""
       spokenWords={0}
       error={demoError}
+      ready={false}
+      isLast={true}
+      sectionIdx={0}
+      totalModules={0}
       onStart={() => setDemoError("Sign in to start a live teaching session.")}
       onEnd={() => {}}
+      onAdvance={() => {}}
       onClose={() => navigate(-1)}
     />
   );
