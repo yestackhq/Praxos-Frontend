@@ -213,6 +213,11 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     } else if (t === "conversation.item.input_audio_transcription.completed") {
       // Learner's spoken answer, transcribed.
       if (evt.transcript?.trim()) push({ role: "learner", text: evt.transcript.trim() });
+    } else if (t === "error") {
+      // Recover from a transient realtime error (e.g. an overlapping-turn conflict)
+      // instead of appearing stuck — drop the half-buffered line and go back to listening.
+      tutorBuf.current = "";
+      setAgentState("listening");
     }
   }
 
