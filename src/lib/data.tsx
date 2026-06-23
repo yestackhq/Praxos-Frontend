@@ -44,6 +44,8 @@ export interface Team {
   documents?: CohortDoc[];
 }
 
+export type WorkspaceRef = { id: number; name: string; slug: string; role: string };
+
 export interface Bundle {
   mode: "demo" | "user" | "loading";
   needsOnboarding: boolean;
@@ -59,6 +61,8 @@ export interface Bundle {
   };
   account: { name: string; email: string; role: string };
   role: string; // the current user's workspace role
+  workspaces: WorkspaceRef[]; // every workspace this person belongs to (drives the switcher)
+  activeWorkspaceId: number | null;
   continueLearning: ContinueLearning | null;
   learningPath: PathItem[];
   pastSessions: typeof mock.pastSessions;
@@ -87,6 +91,8 @@ export const demoBundle: Bundle = {
   learner: mock.learner,
   account: { name: mock.account.name, email: mock.account.email, role: mock.account.role },
   role: "Admin",
+  workspaces: [{ id: 0, name: mock.workspace.name, slug: "demo", role: "Admin" }],
+  activeWorkspaceId: 0,
   continueLearning: mock.continueLearning,
   learningPath: mock.learningPath,
   pastSessions: mock.pastSessions,
@@ -123,6 +129,8 @@ export function emptyUserBundle(name: string, email: string): Bundle {
     learner: { name, firstName: first, understanding: 0, pathProgress: "0 / 0", practisedThisWeek: "0m", sessions: 0, streak: 0 },
     account: { name, email, role: "Learner" },
     role: "Learner",
+    workspaces: [],
+    activeWorkspaceId: null,
     continueLearning: null,
     learningPath: [],
     pastSessions: [],
@@ -155,6 +163,8 @@ export interface DataActions {
   setRole: (memberId: number, role: string) => Promise<void>;
   revokeInvite: (inviteId: number) => Promise<void>;
   completeOnboarding: (workspaceName?: string, slug?: string) => Promise<void>;
+  setActiveWorkspace: (id: number) => void;
+  createWorkspace: (name?: string, slug?: string) => Promise<WorkspaceRef>;
   uploadDocument: (name: string, sections?: number) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
   deleteDocument: (id: number) => Promise<void>;
@@ -180,6 +190,8 @@ export const DataActionsContext = createContext<DataActions>({
   setRole: noop,
   revokeInvite: noop,
   completeOnboarding: noop,
+  setActiveWorkspace: () => {},
+  createWorkspace: async () => ({ id: 0, name: "", slug: "", role: "Admin" }),
   uploadDocument: noop,
   uploadFile: noop,
   deleteDocument: noop,

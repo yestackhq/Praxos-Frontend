@@ -11,6 +11,19 @@ export const apiEnabled = Boolean(API_ORIGIN);
 
 export class ApiError extends Error {}
 
+// The active workspace, sent as X-Workspace-Id on authed requests so the backend
+// scopes the bundle/mutations to it. It's only a selector — the backend always
+// verifies real membership, so it can never reach a workspace you don't belong to.
+let _activeWorkspaceId: string | null = null;
+
+export function setActiveWorkspaceId(id: string | number | null): void {
+  _activeWorkspaceId = id == null ? null : String(id);
+}
+
+function wsHeaders(): Record<string, string> {
+  return _activeWorkspaceId ? { "X-Workspace-Id": _activeWorkspaceId } : {};
+}
+
 export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_ORIGIN) throw new ApiError("VITE_API_ORIGIN not configured");
   const res = await fetch(`${API_ORIGIN}${path}`, {
@@ -34,6 +47,7 @@ export async function apiSend<T>(
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      ...wsHeaders(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: method === "DELETE" ? undefined : JSON.stringify(body ?? {}),
@@ -67,7 +81,7 @@ export async function apiUpload<T>(
   for (const [k, v] of Object.entries(fields ?? {})) form.append(k, v);
   const res = await fetch(`${API_ORIGIN}${path}`, {
     method: "POST",
-    headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { Accept: "application/json", ...wsHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: form,
   });
   if (!res.ok) {

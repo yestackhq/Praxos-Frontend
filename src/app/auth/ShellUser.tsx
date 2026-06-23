@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/clerk-react";
-import { ChevronsUpDown, LogOut, UserCog, Settings } from "lucide-react";
+import { Check, ChevronsUpDown, LogOut, Plus, Settings, UserCog } from "lucide-react";
 import { Avatar } from "@/ui/data";
+import { useData, useDataActions } from "@/lib/data";
 import { clerkEnabled } from "./clerkEnabled";
 
 /**
@@ -38,6 +39,32 @@ function ClerkCard({ name, sub, isAdmin }: { name: string; sub: string; isAdmin:
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { workspaces, activeWorkspaceId } = useData();
+  const { setActiveWorkspace, createWorkspace } = useDataActions();
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const switchTo = (id: number) => {
+    setOpen(false);
+    if (id !== activeWorkspaceId) {
+      setActiveWorkspace(id);
+      navigate("/launch"); // re-route by the new workspace's role (admin vs learner)
+    }
+  };
+
+  const submitCreate = async () => {
+    setBusy(true);
+    try {
+      await createWorkspace(newName.trim() || undefined);
+      setOpen(false);
+      setCreating(false);
+      setNewName("");
+      navigate("/launch");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -73,6 +100,51 @@ function ClerkCard({ name, sub, isAdmin }: { name: string; sub: string; isAdmin:
     <div ref={ref} className="relative">
       {open && (
         <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-2xl shadow-black/60">
+          {workspaces.length > 0 && (
+            <>
+              <p className="px-2.5 pb-1 pt-1.5 text-caption uppercase tracking-wide text-faint">Workspaces</p>
+              <div className="max-h-52 overflow-y-auto">
+                {workspaces.map((w) => (
+                  <button
+                    key={w.id}
+                    onClick={() => switchTo(w.id)}
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-[#3c315b]/5"
+                  >
+                    <Avatar name={w.name} size={22} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-label text-ink">{w.name}</span>
+                      <span className="block text-caption text-faint">{w.role}</span>
+                    </span>
+                    {w.id === activeWorkspaceId && <Check className="size-4 shrink-0 text-ink" />}
+                  </button>
+                ))}
+              </div>
+              {creating ? (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); void submitCreate(); }}
+                  className="flex items-center gap-1.5 px-1.5 py-1.5"
+                >
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Workspace name"
+                    className="min-w-0 flex-1 rounded-md border border-hairline bg-bg px-2 py-1.5 text-label text-ink outline-none placeholder:text-faint focus:border-soft"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="rounded-md border border-hairline px-2.5 py-1.5 text-label text-soft transition-colors hover:border-soft hover:text-ink disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </form>
+              ) : (
+                <MenuItem icon={Plus} label="Create workspace" onClick={() => setCreating(true)} />
+              )}
+              <div className="my-1 h-px bg-hairline" />
+            </>
+          )}
           <MenuItem icon={UserCog} label="Manage account" onClick={() => { setOpen(false); openUserProfile(); }} />
           {isAdmin && (
             <MenuItem icon={Settings} label="Workspace settings" onClick={() => { setOpen(false); navigate("/admin/settings"); }} />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { apiPost, apiSend, apiUpload } from "@/lib/apiClient";
+import { apiPost, apiSend, apiUpload, setActiveWorkspaceId } from "@/lib/apiClient";
 import { uploadOriginalPdf } from "@/lib/docStorage";
 import {
   DataActionsContext,
@@ -10,7 +10,10 @@ import {
   type Bundle,
   type Cohort,
   type Team,
+  type WorkspaceRef,
 } from "./data";
+
+const ACTIVE_WS_KEY = "praxos.activeWorkspaceId";
 
 /**
  * Only mounted when Clerk is configured (so the hooks always have a provider).
@@ -23,6 +26,7 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
   const { getToken } = useAuth();
   const [bundle, setBundle] = useState<Bundle>(demoBundle);
+  const [reloadTick, setReloadTick] = useState(0); // bump to refetch (workspace switch)
 
   const load = useCallback(async () => {
     if (!isSignedIn || !user) {
@@ -31,6 +35,9 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
     }
     const name = user.fullName || user.firstName || "there";
     const email = user.primaryEmailAddress?.emailAddress ?? "";
+    // Send the persisted active workspace as X-Workspace-Id; the backend treats it
+    // as a selector and falls back to a real membership if it's stale.
+    setActiveWorkspaceId(localStorage.getItem(ACTIVE_WS_KEY));
     // Retry generously: besides a briefly-unavailable Clerk token, the backend
     // may be COLD-STARTING (Railway sleeps idle services — 10-20s to wake). Giving
     // up after ~2s drops the user onto the misleading empty bundle, so an invited
@@ -39,6 +46,16 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
       try {
         const token = await getToken();
         const data = await apiPost<Bundle>("/api/bootstrap", { name, email }, token);
+        // Pin every later request to the workspace the server actually resolved, so
+        // a stale/empty selection self-corrects to a real membership.
+        if (data.activeWorkspaceId != null) {
+          setActiveWorkspaceId(data.activeWorkspaceId);
+          try {
+            localStorage.setItem(ACTIVE_WS_KEY, String(data.activeWorkspaceId));
+          } catch {
+            /* ignore */
+          }
+        }
         setBundle({ ...data, mode: "user" });
         return;
       } catch {
@@ -59,7 +76,7 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
       setBundle({ ...emptyUserBundle(name, email), mode: "loading" });
     }
     void load();
-  }, [isLoaded, load, isSignedIn, user]);
+  }, [isLoaded, load, isSignedIn, user, reloadTick]);
 
   // No WebSocket layer in this app, so keep the workspace fresh the lightweight
   // way: refetch when the tab regains focus and on a slow interval while visible.
@@ -98,6 +115,28 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
       completeOnboarding: async (workspaceName?: string, slug?: string) => {
         await apiSend("POST", "/api/onboarding/complete", { workspaceName, slug }, await getToken());
         await load();
+      },
+      setActiveWorkspace: (id: number) => {
+        // Switch workspace: persist it, point the API client at it, and refetch the
+        // bundle (which re-renders the dashboard in that workspace's context).
+        setActiveWorkspaceId(id);
+        try {
+          localStorage.setItem(ACTIVE_WS_KEY, String(id));
+        } catch {
+          /* ignore */
+        }
+        setReloadTick((t) => t + 1);
+      },
+      createWorkspace: async (name?: string, slug?: string) => {
+        const created = await apiPost<WorkspaceRef>("/api/workspaces", { name, slug }, await getToken());
+        setActiveWorkspaceId(created.id);
+        try {
+          localStorage.setItem(ACTIVE_WS_KEY, String(created.id));
+        } catch {
+          /* ignore */
+        }
+        setReloadTick((t) => t + 1);
+        return created;
       },
       uploadDocument: async (name: string, sections = 0) => {
         await apiSend("POST", "/api/documents", { name, sections }, await getToken());
