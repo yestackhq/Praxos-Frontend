@@ -189,14 +189,16 @@ function LiveSessionInner({
   docId,
   docName,
   back,
+  restart,
 }: {
   docId: number | null;
   docName: string;
   back?: string;
+  restart?: boolean;
 }) {
   const navigate = useNavigate();
   const { phase, agentState, transcript, liveCaption, spokenWords, error, start, end, outputVolumeRef } =
-    useVoiceSession(docId);
+    useVoiceSession(docId, restart);
   const onEnd = async () => {
     const result = await end();
     navigate("/app/summary", { state: { result, docName, back } });
@@ -225,9 +227,10 @@ export default function LiveSession() {
   const docName = rawName.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || rawName;
   const docId = params.get("doc") ? Number(params.get("doc")) : null;
   const back = params.get("back") || undefined;
+  const restart = params.get("restart") === "1";
   const [demoError, setDemoError] = useState<string | null>(null);
 
-  if (clerkEnabled) return <LiveSessionInner docId={docId} docName={docName} back={back} />;
+  if (clerkEnabled) return <LiveSessionInner docId={docId} docName={docName} back={back} restart={restart} />;
 
   // Signed-out preview: no auth/WebRTC — show the idle screen; starting prompts sign-in.
   return (

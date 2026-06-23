@@ -193,7 +193,15 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
           await getTokenRef.current(),
           stored ? { storage_path: stored.path } : undefined,
         );
-        await load(true);
+        await load(true); // doc appears immediately as "Indexing"
+        // Indexing runs in the background server-side — nudge a few silent refreshes
+        // (not awaited) so the status flips to "Indexed" without waiting for the slow poll.
+        void (async () => {
+          for (let i = 0; i < 5; i++) {
+            await new Promise((r) => setTimeout(r, 4000));
+            await load(true);
+          }
+        })();
       },
       deleteDocument: async (id: number) => {
         await apiSend("DELETE", `/api/documents/${id}`, null, await getTokenRef.current());

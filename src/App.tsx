@@ -22,14 +22,9 @@ import TeamDetail from "@/app/pages/admin/TeamDetail";
 import People from "@/app/pages/admin/People";
 import Teams from "@/app/pages/admin/Teams";
 import AdminDocuments from "@/app/pages/admin/Documents";
-import Analyzing from "@/app/pages/document/Analyzing";
-import TeachingPlan from "@/app/pages/document/TeachingPlan";
-import EditPlan from "@/app/pages/document/EditPlan";
 import { SettingsModal } from "@/app/settings/SettingsModal";
 import InvitePeople from "@/app/modals/InvitePeople";
 import NewTeam from "@/app/modals/NewTeam";
-import AssignTeamLead from "@/app/modals/AssignTeamLead";
-import AssignPlan from "@/app/modals/AssignPlan";
 import NewCohort from "@/app/modals/NewCohort";
 
 export default function App() {
@@ -53,7 +48,6 @@ export default function App() {
       </Route>
       {/* Full-bleed screens (no sidebar) */}
       <Route path="/app/session" element={<LiveSession />} />
-      <Route path="/admin/documents/analyzing" element={<Analyzing />} />
       <Route
         path="/app/summary"
         element={
@@ -77,11 +71,7 @@ export default function App() {
         <Route path="teams" element={<Teams />} />
         <Route path="teams/new" element={<><Teams /><NewTeam /></>} />
         <Route path="teams/:id" element={<TeamDetail />} />
-        <Route path="teams/lead" element={<><Teams /><AssignTeamLead /></>} />
         <Route path="documents" element={<AdminDocuments />} />
-        <Route path="documents/plan" element={<TeachingPlan />} />
-        <Route path="documents/plan/assign" element={<><TeachingPlan /><AssignPlan /></>} />
-        <Route path="documents/plan/edit" element={<EditPlan />} />
         <Route path="settings" element={<><AdminOverview /><SettingsModal tab="workspace" /></>} />
         <Route path="settings/account" element={<><AdminOverview /><SettingsModal tab="account" /></>} />
         <Route path="settings/members" element={<><AdminOverview /><SettingsModal tab="members" /></>} />

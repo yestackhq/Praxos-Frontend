@@ -34,7 +34,7 @@ const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
  * The browser never sees the API key — the backend mints a short-lived ephemeral
  * token. Captures the running transcript, then scores it via the backend on end.
  */
-export function useVoiceSession(documentId: number | null) {
+export function useVoiceSession(documentId: number | null, restart = false) {
   const { getToken } = useAuth();
   const [phase, setPhase] = useState<SessionPhase>("idle");
   const [agentState, setAgentState] = useState<AgentState>(null);
@@ -136,7 +136,7 @@ export function useVoiceSession(documentId: number | null) {
     setSessionActive(true); // pause the workspace background-refetch for the session
     try {
       const token = await getToken();
-      const data = await apiPost<StartResponse>("/api/sessions/start", { documentId }, token);
+      const data = await apiPost<StartResponse>("/api/sessions/start", { documentId, restart }, token);
       const ephemeral = data.clientSecret;
       if (!ephemeral) throw new Error("Could not start the voice session.");
 
@@ -189,7 +189,7 @@ export function useVoiceSession(documentId: number | null) {
       setAgentState(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId, getToken, teardown, setupMeter]);
+  }, [documentId, restart, getToken, teardown, setupMeter]);
 
   function handleEvent(evt: { type: string; transcript?: string; delta?: string }) {
     const t = evt.type;

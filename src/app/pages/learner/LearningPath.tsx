@@ -43,6 +43,7 @@ export default function LearningPath() {
           const Icon = m.icon;
           const active = item.status === "in_progress";
           const startable = active || item.status === "up_next";
+          const retakeable = item.status === "mastered" && item.docId != null;
           return (
             <li key={item.title} className="relative">
               <Card
@@ -88,6 +89,14 @@ export default function LearningPath() {
                     className={buttonVariants({ size: "sm", className: "shrink-0" })}
                   >
                     <Play className="size-3.5" /> {active ? "Resume" : "Start"}
+                  </Link>
+                )}
+                {retakeable && (
+                  <Link
+                    to={`/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}&restart=1`}
+                    className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
+                  >
+                    <Play className="size-3.5" /> Retake
                   </Link>
                 )}
               </Card>
