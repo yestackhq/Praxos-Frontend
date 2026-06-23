@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { apiPost } from "@/lib/apiClient";
+import { setSessionActive } from "@/lib/ClerkData";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
 
 export type SessionPhase = "idle" | "connecting" | "live" | "scoring" | "ended" | "error";
@@ -108,6 +109,7 @@ export function useVoiceSession(documentId: number | null) {
   );
 
   const teardown = useCallback(() => {
+    setSessionActive(false); // resume the workspace background-refetch
     streamRef.current?.getTracks().forEach((t) => t.stop());
     pcRef.current?.close();
     pcRef.current = null;
@@ -131,6 +133,7 @@ export function useVoiceSession(documentId: number | null) {
     setPhase("connecting");
     setAgentState("thinking");
     setError(null);
+    setSessionActive(true); // pause the workspace background-refetch for the session
     try {
       const token = await getToken();
       const data = await apiPost<StartResponse>("/api/sessions/start", { documentId }, token);
