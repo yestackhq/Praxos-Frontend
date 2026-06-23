@@ -13,7 +13,7 @@ import { ClerkDataProvider } from "./ClerkData";
  */
 
 export type PathItem = (typeof mock.learningPath)[number] & { docId?: number | null };
-export type Person = (typeof mock.people)[number] & { id?: number; team?: string };
+export type Person = (typeof mock.people)[number] & { id?: number; team?: string; band?: string };
 export type PendingInvite = { id: number; email: string; role: string };
 export type AdminDoc = (typeof mock.adminDocuments)[number] & { id?: number };
 export type CohortDoc = { id: number; name: string };
@@ -30,6 +30,8 @@ export interface Cohort {
   memberIds?: number[];
   documentIds?: number[];
   documents?: CohortDoc[];
+  understanding?: number;
+  band?: string;
 }
 export interface Team {
   id?: number;
@@ -72,7 +74,7 @@ export interface Bundle {
     understandingKpis: typeof mock.adminKpis;
     understandingTrend: typeof mock.understandingTrend;
     understandingSeries: { date: string; score: number }[];
-    cohortHealth: typeof mock.cohortHealth;
+    cohortHealth: { name: string; value: number; pct: number; band?: string }[];
     teamHealth: { name: string; value: number }[];
     needsAttention: typeof mock.needsAttention;
     recentActivity: typeof mock.recentActivity;

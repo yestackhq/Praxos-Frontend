@@ -161,7 +161,7 @@ export default function AdminOverview() {
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-label text-ink">{c.name}</span>
                   <span className="nums text-caption text-soft">
-                    {c.value} · {c.pct}%
+                    {c.value}{c.band ? ` · ${c.band}` : ""} · {c.pct}%
                   </span>
                 </div>
                 <ProgressBar value={c.pct} />

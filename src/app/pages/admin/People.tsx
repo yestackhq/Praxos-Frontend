@@ -100,6 +100,7 @@ export default function People() {
                     <ProgressBar value={p.understanding} />
                   </span>
                   <span className="nums text-label text-ink">{p.understanding}</span>
+                  {p.band && <span className="text-caption text-faint">{p.band}</span>}
                 </span>
               )}
             </Td>
