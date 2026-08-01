@@ -1,5 +1,15 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import {
+  ConnectionState,
+  RemoteAudioTrack,
+  Room,
+  RoomEvent,
+  Track,
+  type RemoteParticipant,
+  type RemoteTrack,
+  type RemoteTrackPublication,
+} from "livekit-client";
 import { apiPost } from "@/lib/apiClient";
 import { setSessionActive } from "@/lib/ClerkData";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
@@ -10,86 +20,92 @@ export type SessionPhase = "idle" | "connecting" | "live" | "scoring" | "ended" 
 export type AgentState = null | "thinking" | "listening" | "talking";
 export type Turn = { role: "tutor" | "learner"; text: string };
 
+/** One spoken word with the timings Cartesia produced for it, relative to the
+ * start of the tutor's current line. */
+export type CaptionWord = { text: string; start?: number; end?: number };
+
 export interface ScoreResult {
-  score: number;
-  understanding: number;
+  score: number | null;
+  scoreable: boolean;
+  understanding: number | null;
+  band: string;
   summary: string;
-  topics: { name: string; score: number }[];
+  topics: { name: string; score: number; evidence?: string }[];
   strengths: string[];
   gaps: string[];
+  completion: number;
+  courseComplete: boolean;
 }
 
 interface StartResponse {
   document: { id: number; name: string };
-  clientSecret: string;
-  expiresAt?: number;
-  moduleIdx?: number;
-  totalModules?: number;
-  isLast?: boolean;
-}
-
-interface SectionResponse {
+  livekitUrl: string;
+  room: string;
+  token: string;
   moduleIdx: number;
   moduleTitle: string | null;
   totalModules: number;
   isLast: boolean;
-  instructions: string;
+  resumed: boolean;
 }
 
-// GA Realtime API: the browser POSTs its SDP offer here with the ephemeral token.
-// Session config (model, voice, instructions) is baked into the token server-side.
-const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
+/** Messages the agent worker publishes on the "praxos" data topic. */
+type AgentMessage =
+  | { type: "caption"; seq: number; first: boolean; word: { t: string; s?: number; e?: number } }
+  | { type: "section_ready"; moduleIdx: number; isLast: boolean }
+  | { type: "section_changed"; moduleIdx: number; moduleTitle: string | null; isLast: boolean }
+  | { type: "agent_state"; state: string }
+  | { type: "learner_partial"; text: string }
+  | { type: "error"; message: string };
 
 /**
- * Drives a live voice teaching session over WebRTC straight to OpenAI Realtime.
- * The browser never sees the API key — the backend mints a short-lived ephemeral
- * token. Captures the running transcript, then scores it via the backend on end.
+ * Drives a live voice teaching session over LiveKit.
+ *
+ * The browser only ever holds a short-lived room token; Deepgram (speech-in),
+ * the model, and Cartesia (speech-out) all run in the agent worker, so no
+ * provider key reaches the client. Captions arrive with per-word timings from
+ * Cartesia, which is what keeps the subtitle highlight on the word actually
+ * being spoken.
  */
 export function useVoiceSession(documentId: number | null, restart = false) {
   const { getToken } = useAuth();
   const [phase, setPhase] = useState<SessionPhase>("idle");
   const [agentState, setAgentState] = useState<AgentState>(null);
   const [transcript, setTranscript] = useState<Turn[]>([]);
-  const [liveCaption, setLiveCaption] = useState("");
+  const [caption, setCaption] = useState<CaptionWord[]>([]);
+  const [spokenWords, setSpokenWords] = useState(0);
   const [result, setResult] = useState<ScoreResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Section progression. The tutor calls `ready_for_next_section` → `ready` flips, and the UI
-  // shows the Next-section / Finish button (otherwise it stays "End session").
+  // The tutor called `mark_section_understood` → the UI reveals Next section.
   const [ready, setReady] = useState(false);
   const [sectionIdx, setSectionIdx] = useState(0);
   const [totalModules, setTotalModules] = useState(0);
   const [isLast, setIsLast] = useState(true);
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const tutorBuf = useRef("");
+  const roomRef = useRef<Room | null>(null);
   const transcriptRef = useRef<Turn[]>([]);
-  const moduleIdxRef = useRef(0);
   const sectionStartRef = useRef(0); // transcript index where the current section began
-  const pendingAdvanceRef = useRef<(() => void) | null>(null); // queued "teach next section" trigger
-  const readyRef = useRef(false); // mirrors `ready` so the event handler can guard against loops
-  const swapAppliedRef = useRef(false); // the section advance's session.update has been applied
-  const activeResponseRef = useRef(false); // a model response is currently generating
+  const moduleIdxRef = useRef(0);
 
-  // Live audio analysis: the orb moves with the actual SPOKEN voice (not the
-  // faster text stream), and the caption highlights words as they're heard.
+  // Caption timing.
+  const captionRef = useRef<CaptionWord[]>([]);
+  const captionSeqRef = useRef(-1);
+  const speechStartRef = useRef<number | null>(null); // audio-clock origin for this line
+
+  // Live audio level, read by the orb every frame.
   const outputVolumeRef = useRef(0);
-  const [spokenWords, setSpokenWords] = useState(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const meterRafRef = useRef<number | null>(null);
-  const spokenFloatRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
 
   const push = useCallback((turn: Turn) => {
     transcriptRef.current = [...transcriptRef.current, turn];
     setTranscript(transcriptRef.current);
   }, []);
 
-  // Per frame: read the tutor's voice level (→ orb) and, while the voice is
-  // actually sounding, advance the karaoke highlight one word at a time.
-  const tickMeter = useCallback(() => {
+  /** Per frame: read the tutor's output level (→ orb) and move the caption
+   * highlight to whichever word Cartesia says is sounding right now. */
+  const tick = useCallback(() => {
     const analyser = analyserRef.current;
     if (analyser) {
       const buf = new Uint8Array(analyser.frequencyBinCount);
@@ -101,52 +117,118 @@ export function useVoiceSession(documentId: number | null, restart = false) {
       }
       const vol = Math.min(1, Math.sqrt(sum / buf.length) / 90);
       outputVolumeRef.current = vol;
-      if (vol > 0.06) {
-        spokenFloatRef.current += 0.055; // ~3.3 words/sec at 60fps while speaking
-        const w = Math.floor(spokenFloatRef.current);
-        setSpokenWords((prev) => (w > prev ? w : prev));
+
+      const words = captionRef.current;
+      if (words.length) {
+        // Start the clock on the first audible frame of the line, so the
+        // highlight is anchored to the audio the learner is hearing rather than
+        // to when the text arrived over the network.
+        if (speechStartRef.current == null && vol > 0.06) {
+          speechStartRef.current = performance.now();
+        }
+        if (speechStartRef.current != null) {
+          const elapsed = (performance.now() - speechStartRef.current) / 1000;
+          let idx = 0;
+          for (let i = 0; i < words.length; i++) {
+            const s = words[i]?.start;
+            if (s == null || s <= elapsed) idx = i;
+            else break;
+          }
+          setSpokenWords((prev) => (idx > prev ? idx : prev));
+        }
       }
     }
-    meterRafRef.current = requestAnimationFrame(tickMeter);
+    rafRef.current = requestAnimationFrame(tick);
   }, []);
 
-  const setupMeter = useCallback(
-    (mediaStream: MediaStream) => {
+  const attachMeter = useCallback(
+    (track: RemoteAudioTrack) => {
       try {
+        const stream = new MediaStream([track.mediaStreamTrack]);
         const Ctx =
           window.AudioContext ||
           (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         const ctx = audioCtxRef.current ?? new Ctx();
         audioCtxRef.current = ctx;
-        const src = ctx.createMediaStreamSource(mediaStream);
+        void ctx.resume();
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.85;
-        src.connect(analyser);
+        ctx.createMediaStreamSource(stream).connect(analyser);
         analyserRef.current = analyser;
-        if (meterRafRef.current == null) tickMeter();
+        if (rafRef.current == null) tick();
       } catch {
-        /* audio metering is best-effort */
+        /* metering is best-effort — the session works without the orb reacting */
       }
     },
-    [tickMeter],
+    [tick],
   );
 
   const teardown = useCallback(() => {
-    setSessionActive(false); // resume the workspace background-refetch
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    pcRef.current?.close();
-    pcRef.current = null;
-    streamRef.current = null;
-    if (meterRafRef.current != null) {
-      cancelAnimationFrame(meterRafRef.current);
-      meterRafRef.current = null;
+    setSessionActive(false);
+    void roomRef.current?.disconnect();
+    roomRef.current = null;
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
     analyserRef.current = null;
-    audioCtxRef.current?.close().catch(() => {});
+    void audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
     outputVolumeRef.current = 0;
   }, []);
+
+  useEffect(() => teardown, [teardown]);
+
+  const handleMessage = useCallback(
+    (msg: AgentMessage) => {
+      switch (msg.type) {
+        case "caption": {
+          if (msg.seq !== captionSeqRef.current) {
+            // A new tutor line — reset the highlight and the audio clock.
+            captionSeqRef.current = msg.seq;
+            captionRef.current = [];
+            speechStartRef.current = null;
+            setSpokenWords(0);
+          }
+          const word: CaptionWord = { text: msg.word.t, start: msg.word.s, end: msg.word.e };
+          captionRef.current = [...captionRef.current, word];
+          setCaption(captionRef.current);
+          setAgentState("talking");
+          break;
+        }
+        case "section_ready":
+          setReady(true);
+          setIsLast(msg.isLast);
+          break;
+        case "section_changed":
+          moduleIdxRef.current = msg.moduleIdx;
+          setSectionIdx(msg.moduleIdx);
+          setIsLast(msg.isLast);
+          setReady(false);
+          sectionStartRef.current = transcriptRef.current.length;
+          captionRef.current = [];
+          setCaption([]);
+          setSpokenWords(0);
+          setAgentState("thinking");
+          break;
+        case "agent_state": {
+          const s = msg.state;
+          setAgentState(
+            s === "speaking" ? "talking" : s === "thinking" ? "thinking" : "listening",
+          );
+          break;
+        }
+        case "error":
+          setError(msg.message);
+          setPhase("error");
+          break;
+        default:
+          break;
+      }
+    },
+    [],
+  );
 
   const start = useCallback(async () => {
     if (!documentId || !clerkEnabled) {
@@ -157,64 +239,62 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     setPhase("connecting");
     setAgentState("thinking");
     setError(null);
-    setSessionActive(true); // pause the workspace background-refetch for the session
+    setSessionActive(true);
     try {
       const token = await getToken();
-      const data = await apiPost<StartResponse>("/api/sessions/start", { documentId, restart }, token);
-      const ephemeral = data.clientSecret;
-      if (!ephemeral) throw new Error("Could not start the voice session.");
+      const data = await apiPost<StartResponse>(
+        "/api/sessions/start",
+        { documentId, restart },
+        token,
+      );
       moduleIdxRef.current = data.moduleIdx ?? 0;
       sectionStartRef.current = 0;
+      transcriptRef.current = [];
+      setTranscript([]);
       setSectionIdx(data.moduleIdx ?? 0);
       setTotalModules(data.totalModules ?? 0);
       setIsLast(data.isLast ?? true);
       setReady(false);
-      readyRef.current = false;
 
-      const pc = new RTCPeerConnection();
-      pcRef.current = pc;
+      const room = new Room({ adaptiveStream: false, dynacast: false });
+      roomRef.current = room;
 
-      // Play the tutor's audio.
-      const audio = audioRef.current ?? new Audio();
-      audio.autoplay = true;
-      audioRef.current = audio;
-      pc.ontrack = (e) => {
-        const remote = e.streams[0] ?? null;
-        audio.srcObject = remote;
-        if (remote) setupMeter(remote); // analyse the tutor's voice → orb + caption
-      };
+      room.on(
+        RoomEvent.TrackSubscribed,
+        (track: RemoteTrack, _pub: RemoteTrackPublication, _p: RemoteParticipant) => {
+          if (track.kind === Track.Kind.Audio) {
+            // attach() gives us the <audio> element that actually plays the tutor.
+            track.attach();
+            attachMeter(track as RemoteAudioTrack);
+          }
+        },
+      );
 
-      // Send the mic.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-      // Events channel — transcripts arrive here (config is baked into the token).
-      const dc = pc.createDataChannel("oai-events");
-      dcRef.current = dc;
-      dc.onmessage = (e) => handleEvent(JSON.parse(e.data));
-      // Make the tutor speak FIRST: trigger its opening turn as soon as the channel
-      // opens, so it greets + starts teaching instead of waiting for the learner.
-      dc.onopen = () => {
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array, _p, _kind, topic?: string) => {
+        if (topic && topic !== "praxos") return;
         try {
-          dc.send(JSON.stringify({ type: "response.create" }));
+          handleMessage(JSON.parse(new TextDecoder().decode(payload)) as AgentMessage);
         } catch {
-          /* best-effort — the session still works if this drops */
+          /* ignore malformed frames */
         }
-      };
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      const resp = await fetch(REALTIME_CALLS_URL, {
-        method: "POST",
-        body: offer.sdp,
-        headers: { Authorization: `Bearer ${ephemeral}`, "Content-Type": "application/sdp" },
       });
-      if (!resp.ok) throw new Error("Voice connection was refused.");
-      await pc.setRemoteDescription({ type: "answer", sdp: await resp.text() });
+
+      // Final transcripts for both sides come through LiveKit's transcription
+      // stream, so the sidebar and the graded transcript are the same text the
+      // agent saw.
+      room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
+        const fromLearner = participant?.identity === room.localParticipant.identity;
+        for (const seg of segments) {
+          if (!seg.final || !seg.text.trim()) continue;
+          push({ role: fromLearner ? "learner" : "tutor", text: seg.text.trim() });
+        }
+      });
+
+      room.on(RoomEvent.Disconnected, () => setAgentState(null));
+
+      await room.connect(data.livekitUrl, data.token);
+      await room.localParticipant.setMicrophoneEnabled(true);
       setPhase("live");
-      // Stay in "thinking" until the tutor's first words arrive — otherwise the UI shows
-      // "Listening…" during the model's opening-turn latency, which reads as waiting for the learner.
       setAgentState("thinking");
     } catch (err) {
       teardown();
@@ -222,172 +302,39 @@ export function useVoiceSession(documentId: number | null, restart = false) {
       setPhase("error");
       setAgentState(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId, restart, getToken, teardown, setupMeter]);
+  }, [documentId, restart, getToken, teardown, attachMeter, handleMessage, push]);
 
-  // Fire the queued "teach the next section" trigger, but only once BOTH hold: the instruction
-  // swap is applied (session.updated) AND no response is mid-flight (sending response.create
-  // during an active response is rejected, which left the tutor silent after the click).
-  const tryAdvance = useCallback(() => {
-    if (pendingAdvanceRef.current && swapAppliedRef.current && !activeResponseRef.current) {
-      const f = pendingAdvanceRef.current;
-      pendingAdvanceRef.current = null;
-      f();
-    }
+  const publish = useCallback((msg: Record<string, unknown>) => {
+    const room = roomRef.current;
+    if (!room || room.state !== ConnectionState.Connected) return;
+    void room.localParticipant.publishData(
+      new TextEncoder().encode(JSON.stringify(msg)),
+      { reliable: true, topic: "praxos" },
+    );
   }, []);
 
-  function handleEvent(evt: {
-    type: string;
-    transcript?: string;
-    delta?: string;
-    response?: { output?: { type?: string; name?: string; call_id?: string }[] };
-  }) {
-    const t = evt.type;
-    // Tutor speech transcript streams in (event name differs across API versions).
-    if (t === "response.audio_transcript.delta" || t === "response.output_audio_transcript.delta") {
-      if (tutorBuf.current === "") {
-        // new tutor turn — restart the karaoke highlight at the first word
-        spokenFloatRef.current = 0;
-        setSpokenWords(0);
-      }
-      tutorBuf.current += evt.delta ?? "";
-      setLiveCaption(tutorBuf.current);
-      setAgentState("talking");
-    } else if (t === "response.audio_transcript.done" || t === "response.output_audio_transcript.done") {
-      if (tutorBuf.current.trim()) push({ role: "tutor", text: tutorBuf.current.trim() });
-      tutorBuf.current = "";
-      // Keep the caption on screen — the spoken audio lags the streamed
-      // transcript, so clearing it here makes the text vanish while the tutor is
-      // still talking. The next tutor turn's first delta replaces it.
-      setAgentState("listening");
-    } else if (t === "conversation.item.input_audio_transcription.completed") {
-      // Learner's spoken answer, transcribed.
-      if (evt.transcript?.trim()) push({ role: "learner", text: evt.transcript.trim() });
-    } else if (t === "response.done") {
-      activeResponseRef.current = false;
-      // The tutor finished a turn. If it CALLED the readiness tool, reveal the Next-section /
-      // Finish button AND make it actually speak an acknowledgement — the model often emits the
-      // tool call with no audio, which left dead air (the learner had to say "hello" to un-stick it).
-      for (const item of evt.response?.output ?? []) {
-        if (item?.type === "function_call" && item?.name === "ready_for_next_section") {
-          const firstTime = !readyRef.current;
-          readyRef.current = true;
-          setReady(true);
-          try {
-            dcRef.current?.send(
-              JSON.stringify({
-                type: "conversation.item.create",
-                item: {
-                  type: "function_call_output",
-                  call_id: item.call_id,
-                  output:
-                    '{"status":"button_shown","instruction":"In one short sentence tell the learner they have completed this section and can tap the on-screen button to continue whenever they are ready (or, if this is the final section, give a one-line wrap-up). Then stop and wait."}',
-                },
-              }),
-            );
-            // Prompt a spoken reply, but only the first time — so a repeated tool call can't loop responses.
-            if (firstTime) dcRef.current?.send(JSON.stringify({ type: "response.create" }));
-          } catch {
-            /* best-effort */
-          }
-        }
-      }
-      tryAdvance();
-    } else if (t === "response.created") {
-      activeResponseRef.current = true;
-    } else if (t === "session.updated") {
-      // The section's instruction swap is now live; the queued next-section trigger may fire
-      // (once any in-flight response also finishes — see tryAdvance).
-      swapAppliedRef.current = true;
-      tryAdvance();
-    } else if (t === "error") {
-      // Recover from a transient realtime error (e.g. an overlapping-turn conflict) instead of
-      // appearing stuck — drop the half-buffered line and go back to listening.
-      activeResponseRef.current = false;
-      tutorBuf.current = "";
-      setAgentState("listening");
-    }
-  }
-
-  // "Next section" — advance the LIVE session without reconnecting: score the section we're
-  // leaving, fetch the next section's instructions, and switch the tutor onto them via
-  // session.update (so it recaps in one line and keeps teaching — no "Hi, I'm Praxos" restart).
+  /** "Next section" — score the section being left and tell the agent to move on
+   * in place, so the tutor keeps its context instead of restarting. */
   const advanceSection = useCallback(async () => {
-    const dc = dcRef.current;
-    if (!documentId || !dc || dc.readyState !== "open") return;
-    const token = await getToken();
+    if (!documentId) return;
     const done = transcriptRef.current.slice(sectionStartRef.current);
     if (done.length) {
-      void apiPost("/api/sessions/score", { documentId, moduleIdx: moduleIdxRef.current, transcript: done }, token).catch(
-        () => {},
-      );
-    }
-    let next: SectionResponse;
-    try {
-      next = await apiPost<SectionResponse>(
-        "/api/sessions/section",
-        { documentId, moduleIdx: moduleIdxRef.current + 1 },
+      const token = await getToken();
+      void apiPost(
+        "/api/sessions/score",
+        { documentId, moduleIdx: moduleIdxRef.current, transcript: done },
         token,
-      );
-    } catch {
-      return; // couldn't fetch the next section — leave the button for a retry
+      ).catch(() => {});
     }
-    // Switch the live session onto the next section, then trigger the tutor's first turn — but
-    // ONLY once the instruction swap is applied (session.updated) AND no response is mid-flight.
-    // Firing response.create during an active response is rejected by the API, which made the
-    // tutor go silent after the click. tryAdvance() (called here and from the session.updated /
-    // response.done handlers) enforces both conditions; the timers are last-resort fallbacks.
-    swapAppliedRef.current = false;
-    pendingAdvanceRef.current = () => {
-      const ch = dcRef.current;
-      if (ch && ch.readyState === "open") {
-        try {
-          ch.send(JSON.stringify({ type: "response.create" }));
-        } catch {
-          /* best-effort */
-        }
-      }
-    };
-    try {
-      // `session.type` is REQUIRED on session.update (GA API) — without it the whole update is
-      // rejected ("missing_required_parameter: session.type") and the instruction swap silently fails.
-      dc.send(
-        JSON.stringify({ type: "session.update", session: { type: "realtime", instructions: next.instructions } }),
-      );
-    } catch {
-      /* best-effort */
-    }
-    tryAdvance();
-    // If session.updated is slow, assume the swap applied (it fires on the next response.done if a
-    // response is still active); a final hard fallback guarantees we never hang.
-    window.setTimeout(() => {
-      swapAppliedRef.current = true;
-      tryAdvance();
-    }, 1200);
-    window.setTimeout(() => {
-      if (pendingAdvanceRef.current) {
-        const f = pendingAdvanceRef.current;
-        pendingAdvanceRef.current = null;
-        f();
-      }
-    }, 3500);
-    moduleIdxRef.current = next.moduleIdx;
-    sectionStartRef.current = transcriptRef.current.length;
-    setSectionIdx(next.moduleIdx);
-    setIsLast(next.isLast);
+    publish({ type: "advance", moduleIdx: moduleIdxRef.current + 1 });
     setReady(false);
-    readyRef.current = false;
-    tutorBuf.current = "";
-    setLiveCaption("");
     setAgentState("thinking");
-  }, [documentId, getToken, tryAdvance]);
+  }, [documentId, getToken, publish]);
 
   const end = useCallback(async (): Promise<ScoreResult | null> => {
     teardown();
     setAgentState(null);
     setReady(false);
-    // Score the section currently in progress — the slice since the last advance. For a single
-    // sitting that's the whole transcript; after advancing it's just the final section taught.
     const turns = transcriptRef.current.slice(sectionStartRef.current);
     if (!documentId || turns.length === 0) {
       setPhase("ended");
@@ -415,7 +362,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     phase,
     agentState,
     transcript,
-    liveCaption,
+    caption,
     spokenWords,
     result,
     error,

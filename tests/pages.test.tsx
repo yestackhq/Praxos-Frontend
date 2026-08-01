@@ -46,11 +46,46 @@ describe("Onboarding", () => {
 });
 
 describe("SessionSummary", () => {
+  // The summary renders ONLY a real session result — it redirects rather than
+  // falling back to demo data — so the result has to be supplied as router state.
+  const result = {
+    score: 82,
+    scoreable: true,
+    understanding: 74,
+    band: "Proficient",
+    summary: "Solid grasp. Well done.",
+    topics: [{ name: "Retention windows", score: 80 }],
+    strengths: [],
+    gaps: [],
+    completion: 50,
+    courseComplete: false,
+  };
+
   it("renders the score and topic breakdown", () => {
-    wrap(<SessionSummary />);
+    render(
+      <MemoryRouter initialEntries={[{ pathname: "/app/summary", state: { result, docName: "Policy" } }]}>
+        <SessionSummary />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("82")).toBeInTheDocument();
     expect(screen.getByText("Solid grasp. Well done.")).toBeInTheDocument();
     expect(screen.getByText("Topic breakdown")).toBeInTheDocument();
     expect(screen.getByText("Retention windows")).toBeInTheDocument();
+  });
+
+  it("says a sitting is unscoreable rather than calling it a bad score", () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/app/summary",
+            state: { result: { ...result, score: null, scoreable: false, summary: "" } },
+          },
+        ]}
+      >
+        <SessionSummary />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Nothing to assess yet")).toBeInTheDocument();
   });
 });

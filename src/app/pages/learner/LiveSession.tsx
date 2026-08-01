@@ -1,11 +1,17 @@
-import { type RefObject, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mic, Sparkles } from "lucide-react";
 import { Logo } from "@/ui/Logo";
 import { VoiceOrb, type VoiceOrbState } from "@/ui/VoiceOrb";
 import { Button, buttonVariants } from "@/ui/Button";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
-import { useVoiceSession, type SessionPhase, type AgentState, type Turn } from "@/lib/useVoiceSession";
+import {
+  useVoiceSession,
+  type SessionPhase,
+  type AgentState,
+  type CaptionWord,
+  type Turn,
+} from "@/lib/useVoiceSession";
 
 /** Map the session phase + agent state onto the orb's visual state. */
 function orbState(agentState: AgentState, phase: SessionPhase): VoiceOrbState {
@@ -17,10 +23,13 @@ function orbState(agentState: AgentState, phase: SessionPhase): VoiceOrbState {
 }
 
 /** Karaoke caption: the whole tutor line stays on screen and the word currently
- * being SPOKEN (paced by the real audio, not the faster text stream) lights up —
- * already-spoken words dim, upcoming words faint. */
-function KaraokeCaption({ text, spoken }: { text: string; spoken: number }) {
-  const words = text.trim() ? text.trim().split(/\s+/) : [];
+ * being SPOKEN lights up — already-spoken words dim, upcoming words faint.
+ *
+ * `spoken` is now derived from Cartesia's per-word timestamps against the live
+ * audio clock, so the highlight tracks the actual speech. It used to advance on
+ * a fixed 3.3-words-per-second estimate, which drifted within a sentence and was
+ * badly wrong whenever the tutor paused. */
+function KaraokeCaption({ words, spoken }: { words: CaptionWord[]; spoken: number }) {
   return (
     <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-h3 leading-snug">
       {words.map((w, i) => (
@@ -30,7 +39,7 @@ function KaraokeCaption({ text, spoken }: { text: string; spoken: number }) {
             i < spoken ? "text-soft" : i === spoken ? "text-ink" : "text-faint"
           }`}
         >
-          {w}
+          {w.text}
         </span>
       ))}
     </p>
@@ -44,7 +53,7 @@ function SessionShell({
   agentState,
   docName,
   transcript,
-  liveCaption,
+  caption,
   spokenWords,
   volumeRef,
   error,
@@ -61,9 +70,9 @@ function SessionShell({
   agentState: AgentState;
   docName: string;
   transcript: Turn[];
-  liveCaption: string;
+  caption: CaptionWord[];
   spokenWords: number;
-  volumeRef?: RefObject<number>;
+  volumeRef?: { current: number };
   error: string | null;
   ready: boolean;
   isLast: boolean;
@@ -168,8 +177,8 @@ function SessionShell({
                 />
               </div>
               <div className="flex min-h-[4.5em] max-w-2xl items-center justify-center">
-                {liveCaption ? (
-                  <KaraokeCaption text={liveCaption} spoken={spokenWords} />
+                {caption.length ? (
+                  <KaraokeCaption words={caption} spoken={spokenWords} />
                 ) : (
                   <p className="text-h3 leading-snug text-faint">
                     {phase === "scoring"
@@ -242,7 +251,7 @@ function LiveSessionInner({
     phase,
     agentState,
     transcript,
-    liveCaption,
+    caption,
     spokenWords,
     error,
     ready,
@@ -264,7 +273,7 @@ function LiveSessionInner({
       agentState={agentState}
       docName={docName}
       transcript={transcript}
-      liveCaption={liveCaption}
+      caption={caption}
       spokenWords={spokenWords}
       volumeRef={outputVolumeRef}
       error={error}
@@ -299,7 +308,7 @@ export default function LiveSession() {
       agentState={null}
       docName={docName}
       transcript={[]}
-      liveCaption=""
+      caption={[]}
       spokenWords={0}
       error={demoError}
       ready={false}

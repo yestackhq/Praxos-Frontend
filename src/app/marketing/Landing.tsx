@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
 import { Reveal, BlurFade } from "./cinematic";
 import { Ghost } from "./Ghost";
-import { GhostCursor } from "./GhostCursor";
 
 /* Phantom palette */
 const C = {
@@ -46,7 +45,6 @@ export default function Landing() {
   const reduce = useReducedMotion();
   const page = (
     <>
-      <GhostCursor />
       <ScrollProgress />
       <PillNav />
       <Hero />

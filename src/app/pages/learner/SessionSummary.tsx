@@ -5,7 +5,10 @@ import { ScoreRing } from "@/ui/data";
 import { buttonVariants } from "@/ui/Button";
 import type { ScoreResult } from "@/lib/useVoiceSession";
 
-function headlineFor(score: number): string {
+function headlineFor(score: number | null): string {
+  // A sitting where the learner never really answered is UNSCOREABLE, not a bad
+  // score — saying so is honest and tells them what to do next.
+  if (score === null) return "Nothing to assess yet";
   if (score >= 85) return "Strong understanding";
   if (score >= 70) return "Solid grasp";
   if (score >= 50) return "Getting there";
@@ -31,13 +34,24 @@ export default function SessionSummary() {
   return (
     <div className="animate-fade-up mx-auto max-w-2xl py-6 text-center">
       <div className="flex justify-center">
-        <ScoreRing value={result.score} size={132} />
+        <ScoreRing value={result.score ?? 0} size={132} />
       </div>
       <p className="eyebrow mt-7">Session complete · {docName}</p>
       <h1 className="mt-3 text-h2 text-ink">{headlineFor(result.score)}</h1>
       <p className="mx-auto mt-3 max-w-md text-body text-soft">
-        {result.summary || "Here is how your understanding is tracking."}
+        {result.summary ||
+          (result.scoreable
+            ? "Here is how your understanding is tracking."
+            : "Explain the material out loud next time and Praxos can assess it.")}
       </p>
+
+      {result.understanding !== null && (
+        <p className="mx-auto mt-4 max-w-md text-body-s text-faint">
+          Across this document you have demonstrated{" "}
+          <span className="nums text-ink">{result.understanding}</span>/100
+          {result.band ? ` · ${result.band}` : ""} · {result.completion}% of sections mastered.
+        </p>
+      )}
 
       {result.topics.length > 0 && (
         <Card className="mt-9 p-6 text-left">

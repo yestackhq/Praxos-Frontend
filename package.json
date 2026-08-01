@@ -14,11 +14,13 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.61.8",
     "@clerk/themes": "^2.4.57",
+    "@livekit/components-react": "^2.9.23",
     "@supabase/supabase-js": "^2.107.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dexie": "^4.0.10",
     "lenis": "^1.3.23",
+    "livekit-client": "^2.21.0",
     "lucide-react": "^0.469.0",
     "motion": "^12.40.0",
     "nanoid": "^5.0.9",
