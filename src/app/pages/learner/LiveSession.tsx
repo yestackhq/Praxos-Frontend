@@ -61,6 +61,7 @@ function SessionShell({
   isLast,
   sectionIdx,
   totalModules,
+  advanceError,
   onStart,
   onEnd,
   onAdvance,
@@ -78,6 +79,7 @@ function SessionShell({
   isLast: boolean;
   sectionIdx: number;
   totalModules: number;
+  advanceError?: string | null;
   onStart: () => void;
   onEnd: () => void;
   onAdvance: () => void;
@@ -177,7 +179,9 @@ function SessionShell({
                 />
               </div>
               <div className="flex min-h-[4.5em] max-w-2xl items-center justify-center">
-                {caption.length ? (
+                {advanceError ? (
+                  <p className="text-h3 leading-snug text-soft">{advanceError}</p>
+                ) : caption.length ? (
                   <KaraokeCaption words={caption} spoken={spokenWords} />
                 ) : (
                   <p className="text-h3 leading-snug text-faint">
@@ -258,6 +262,7 @@ function LiveSessionInner({
     isLast,
     sectionIdx,
     totalModules,
+    advanceError,
     start,
     end,
     advanceSection,
@@ -281,6 +286,7 @@ function LiveSessionInner({
       isLast={isLast}
       sectionIdx={sectionIdx}
       totalModules={totalModules}
+      advanceError={advanceError}
       onStart={start}
       onEnd={onEnd}
       onAdvance={() => void advanceSection()}

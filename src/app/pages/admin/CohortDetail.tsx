@@ -5,7 +5,7 @@ import { ArrowLeft, Users, FileText, Loader2, Check, RefreshCw, Rocket, Clock } 
 import { Card } from "@/ui/Card";
 import { Badge, Avatar } from "@/ui/data";
 import { Button } from "@/ui/Button";
-import { apiGet } from "@/lib/apiClient";
+import { apiGet, apiUrl } from "@/lib/apiClient";
 import { useData, useDataActions, type Cohort } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,7 @@ function PlanCard({ doc, token }: { doc: { id: number; name: string }; token: st
   const regenerate = async () => {
     setRegen(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_ORIGIN}/api/documents/${doc.id}/plan/generate`, {
+      const res = await fetch(apiUrl(`/api/documents/${doc.id}/plan/generate`), {
         method: "POST",
         headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });

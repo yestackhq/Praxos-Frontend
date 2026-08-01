@@ -1,13 +1,33 @@
 /**
  * Thin API client for the Praxos LMS backend (backend/lms_app).
  *
- * Set VITE_API_ORIGIN to the backend (e.g. http://localhost:8000) to use live
- * data. When unset or unreachable, callers fall back to the local mock so the
- * app stays fully functional offline / in preview.
+ * VITE_API_ORIGIN selects where the API lives:
+ *   "/"                     same origin — requests go to this host's own /api,
+ *                           which server.js proxies to the backend over Railway's
+ *                           private network. The backend has no public URL, so
+ *                           this is what production uses.
+ *   "http://localhost:8000" an absolute origin, for local development against a
+ *                           backend you are running yourself.
+ *   unset                   no API — callers fall back to the local mock so the
+ *                           app stays usable offline / in preview.
+ *
+ * The same-origin case has to be explicit: an empty string is falsy, so treating
+ * "" as "same origin" would be indistinguishable from "not configured" and would
+ * silently serve mock data in production.
  */
-const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN as string | undefined)?.replace(/\/$/, "");
+const RAW_ORIGIN = (import.meta.env.VITE_API_ORIGIN as string | undefined)?.trim();
+const SAME_ORIGIN = RAW_ORIGIN === "/" || RAW_ORIGIN === "same-origin";
+const API_ORIGIN = SAME_ORIGIN ? "" : RAW_ORIGIN?.replace(/\/$/, "");
 
-export const apiEnabled = Boolean(API_ORIGIN);
+export const apiEnabled = SAME_ORIGIN || Boolean(API_ORIGIN);
+
+/** Absolute URL for an API path. Always use this rather than interpolating
+ * VITE_API_ORIGIN directly: in same-origin mode the value is "/", so
+ * `${VITE_API_ORIGIN}/api/x` yields "//api/x" — a protocol-relative URL the
+ * browser resolves against the host "api". */
+export function apiUrl(path: string): string {
+  return `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 export class ApiError extends Error {}
 
@@ -25,7 +45,7 @@ function wsHeaders(): Record<string, string> {
 }
 
 export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!API_ORIGIN) throw new ApiError("VITE_API_ORIGIN not configured");
+  if (!apiEnabled) throw new ApiError("VITE_API_ORIGIN not configured");
   const res = await fetch(`${API_ORIGIN}${path}`, {
     headers: { Accept: "application/json", ...(init?.headers ?? {}) },
     ...init,
@@ -41,7 +61,7 @@ export async function apiSend<T>(
   body: unknown,
   token?: string | null,
 ): Promise<T> {
-  if (!API_ORIGIN) throw new ApiError("VITE_API_ORIGIN not configured");
+  if (!apiEnabled) throw new ApiError("VITE_API_ORIGIN not configured");
   const res = await fetch(`${API_ORIGIN}${path}`, {
     method,
     headers: {
@@ -75,7 +95,7 @@ export async function apiUpload<T>(
   token?: string | null,
   fields?: Record<string, string>,
 ): Promise<T> {
-  if (!API_ORIGIN) throw new ApiError("VITE_API_ORIGIN not configured");
+  if (!apiEnabled) throw new ApiError("VITE_API_ORIGIN not configured");
   const form = new FormData();
   form.append("file", file, file.name);
   for (const [k, v] of Object.entries(fields ?? {})) form.append(k, v);

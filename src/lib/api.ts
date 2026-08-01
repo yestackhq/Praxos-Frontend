@@ -1,6 +1,9 @@
 import { getAccessToken } from "./supabase";
 
-const API_BASE = `${import.meta.env.VITE_API_ORIGIN ?? ""}/api`;
+import { apiUrl } from "./apiClient";
+
+// Built via apiUrl so same-origin mode ("/") does not produce "//api".
+const API_BASE = apiUrl("/api");
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken();

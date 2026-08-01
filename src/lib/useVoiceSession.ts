@@ -54,6 +54,8 @@ type AgentMessage =
   | { type: "caption"; seq: number; first: boolean; word: { t: string; s?: number; e?: number } }
   | { type: "section_ready"; moduleIdx: number; isLast: boolean }
   | { type: "section_changed"; moduleIdx: number; moduleTitle: string | null; isLast: boolean }
+  | { type: "advance_failed"; moduleIdx: number }
+  | { type: "course_complete"; moduleIdx: number }
   | { type: "agent_state"; state: string }
   | { type: "learner_partial"; text: string }
   | { type: "error"; message: string };
@@ -67,6 +69,10 @@ type AgentMessage =
  * Cartesia, which is what keeps the subtitle highlight on the word actually
  * being spoken.
  */
+/** How long to wait for the agent to confirm a section change before handing
+ * control back to the learner. */
+const ADVANCE_TIMEOUT_MS = 10_000;
+
 export function useVoiceSession(documentId: number | null, restart = false) {
   const { getToken } = useAuth();
   const [phase, setPhase] = useState<SessionPhase>("idle");
@@ -81,11 +87,15 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const [sectionIdx, setSectionIdx] = useState(0);
   const [totalModules, setTotalModules] = useState(0);
   const [isLast, setIsLast] = useState(true);
+  // Set when an advance did not land, so the UI can offer the button again
+  // instead of sitting on the previous section forever.
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
 
   const roomRef = useRef<Room | null>(null);
   const transcriptRef = useRef<Turn[]>([]);
   const sectionStartRef = useRef(0); // transcript index where the current section began
   const moduleIdxRef = useRef(0);
+  const advanceTimerRef = useRef<number | null>(null);
 
   // Caption timing.
   const captionRef = useRef<CaptionWord[]>([]);
@@ -97,6 +107,13 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  const clearAdvanceWatchdog = useCallback(() => {
+    if (advanceTimerRef.current != null) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  }, []);
 
   const push = useCallback((turn: Turn) => {
     transcriptRef.current = [...transcriptRef.current, turn];
@@ -201,7 +218,23 @@ export function useVoiceSession(documentId: number | null, restart = false) {
           setReady(true);
           setIsLast(msg.isLast);
           break;
+        case "advance_failed":
+          // The agent could not load the next section. Put the learner back in
+          // control rather than leaving them on a section that looks finished.
+          clearAdvanceWatchdog();
+          setReady(true);
+          setAgentState("listening");
+          setAdvanceError("Could not load the next section. Tap to try again.");
+          break;
+        case "course_complete":
+          clearAdvanceWatchdog();
+          setIsLast(true);
+          setReady(true);
+          setAgentState("listening");
+          break;
         case "section_changed":
+          clearAdvanceWatchdog();
+          setAdvanceError(null);
           moduleIdxRef.current = msg.moduleIdx;
           setSectionIdx(msg.moduleIdx);
           setIsLast(msg.isLast);
@@ -227,7 +260,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
           break;
       }
     },
-    [],
+    [clearAdvanceWatchdog],
   );
 
   const start = useCallback(async () => {
@@ -328,10 +361,26 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     }
     publish({ type: "advance", moduleIdx: moduleIdxRef.current + 1 });
     setReady(false);
+    setAdvanceError(null);
     setAgentState("thinking");
-  }, [documentId, getToken, publish]);
+
+    // The agent confirms with `section_changed`. If that never arrives — a
+    // dropped data message, a worker restart mid-swap — restore the button
+    // rather than leaving the learner stuck on a section they have finished.
+    clearAdvanceWatchdog();
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null;
+      setReady(true);
+      setAgentState("listening");
+      setAdvanceError("The next section did not load. Tap to try again.");
+    }, ADVANCE_TIMEOUT_MS);
+  }, [documentId, getToken, publish, clearAdvanceWatchdog]);
 
   const end = useCallback(async (): Promise<ScoreResult | null> => {
+    clearAdvanceWatchdog();
+    // Tell the worker the browser is grading this section, so its
+    // disconnect safety net does not grade the same turns a second time.
+    publish({ type: "ending" });
     teardown();
     setAgentState(null);
     setReady(false);
@@ -356,7 +405,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
       setPhase("error");
       return null;
     }
-  }, [documentId, getToken, teardown]);
+  }, [documentId, getToken, teardown, publish, clearAdvanceWatchdog]);
 
   return {
     phase,
@@ -373,6 +422,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     sectionIdx,
     totalModules,
     isLast,
+    advanceError,
     outputVolumeRef,
   };
 }
