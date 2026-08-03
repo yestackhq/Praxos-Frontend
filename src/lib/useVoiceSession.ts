@@ -56,6 +56,7 @@ interface StartResponse {
 /** Messages the agent worker publishes on the "praxos" data topic. */
 type AgentMessage =
   | { type: "caption"; seq: number; first: boolean; word: { t: string; s?: number; e?: number } }
+  | { type: "agent_ready"; moduleIdx: number; moduleTitle: string | null; totalModules: number; isLast: boolean }
   | { type: "section_ready"; moduleIdx: number; isLast: boolean }
   | { type: "section_changed"; moduleIdx: number; moduleTitle: string | null; isLast: boolean }
   | { type: "advance_failed"; moduleIdx: number }
@@ -107,6 +108,10 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const sectionStartRef = useRef(0); // transcript index where the current section began
   const moduleIdxRef = useRef(0);
   const advanceTimerRef = useRef<number | null>(null);
+  // Whether this session has already heard from an agent. A second agent_ready
+  // means the worker was REPLACED (reconnect after a sleep/crash) — the page
+  // must re-sync instead of assuming the conversation is continuous.
+  const agentSeenRef = useRef(false);
 
   // Caption timing.
   const captionRef = useRef<CaptionWord[]>([]);
@@ -226,6 +231,30 @@ export function useVoiceSession(documentId: number | null, restart = false) {
           setAgentState("talking");
           break;
         }
+        case "agent_ready": {
+          // The worker announces which section it is teaching. The first one is
+          // the normal boot (adopt its view — `locate` may have resolved a
+          // different section than the join token was stamped with). A LATER
+          // one means the previous worker died and a replacement was
+          // dispatched by a reconnect: re-sync and tell the learner.
+          const replacement = agentSeenRef.current;
+          agentSeenRef.current = true;
+          if (moduleIdxRef.current !== msg.moduleIdx) {
+            moduleIdxRef.current = msg.moduleIdx;
+            setSectionIdx(msg.moduleIdx);
+            sectionStartRef.current = transcriptRef.current.length;
+          }
+          setTotalModules(msg.totalModules);
+          setIsLast(msg.isLast);
+          if (replacement) {
+            clearAdvanceWatchdog();
+            setReady(false);
+            setSectionAnswers(0);
+            setAgentState("thinking");
+            setAdvanceError("Reconnected — picking up where you left off.");
+          }
+          break;
+        }
         case "section_ready":
           setReady(true);
           setIsLast(msg.isLast);
@@ -294,6 +323,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
       );
       moduleIdxRef.current = data.moduleIdx ?? 0;
       sectionStartRef.current = 0;
+      agentSeenRef.current = false;
       transcriptRef.current = [];
       setTranscript([]);
       setSectionIdx(data.moduleIdx ?? 0);
