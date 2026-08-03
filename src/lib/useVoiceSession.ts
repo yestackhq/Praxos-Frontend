@@ -252,7 +252,6 @@ export function useVoiceSession(documentId: number | null, restart = false) {
           setIsLast(msg.isLast);
           setReady(false);
           setSectionAnswers(0);
-          sectionStartRef.current = transcriptRef.current.length;
           captionRef.current = [];
           setCaption([]);
           setSpokenWords(0);
@@ -364,6 +363,14 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const advanceSection = useCallback(async () => {
     if (!documentId) return;
     const done = transcriptRef.current.slice(sectionStartRef.current);
+    // Close the section HERE, at the moment its turns are sent for grading — not
+    // later when `section_changed` arrives. The tutor's closing line ("You have
+    // finished this section, tap the button") lands in the gap between the two,
+    // so it was excluded from the section it belongs to and filed against the
+    // NEXT one. That produced a phantom sitting for the following section
+    // containing a single tutor line and zero learner turns, which then read as
+    // "they started section N+1" when they had not.
+    sectionStartRef.current = transcriptRef.current.length;
     if (done.length) {
       const token = await getToken();
       void apiPost(
