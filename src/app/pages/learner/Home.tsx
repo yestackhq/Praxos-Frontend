@@ -10,6 +10,7 @@ import { type PathStatus } from "@/lib/mock";
 
 const statusMeta: Record<PathStatus, { label: string; icon: typeof Check; cls: string }> = {
   mastered: { label: "Mastered", icon: Check, cls: "text-ink" },
+  completed: { label: "Completed", icon: Check, cls: "text-soft" },
   in_progress: { label: "In progress", icon: Circle, cls: "text-ink" },
   up_next: { label: "Up next", icon: ChevronRight, cls: "text-soft" },
   locked: { label: "Locked", icon: Lock, cls: "text-faint" },
@@ -17,7 +18,11 @@ const statusMeta: Record<PathStatus, { label: string; icon: typeof Check; cls: s
 
 export default function LearnerHome() {
   const { learner, continueLearning, learningPath } = useData();
-  const masteredCount = learningPath.filter((p) => p.status === "mastered").length;
+  // Documents finished, not documents scored above the bar — this counter sits
+  // next to "Path progress", which is about how far along they are.
+  const doneCount = learningPath.filter(
+    (p) => p.status === "mastered" || p.status === "completed",
+  ).length;
   const fresh = !continueLearning && learningPath.length === 0;
 
   return (
@@ -90,7 +95,7 @@ export default function LearnerHome() {
         {[
           // null = never measured, which must read differently from a score of 0.
           { label: "Understanding", value: learner.understanding ?? "—", hint: "across your work" },
-          { label: "Path progress", value: learner.pathProgress, hint: "documents mastered" },
+          { label: "Path progress", value: learner.pathProgress, hint: "documents completed" },
           { label: "Practised", value: learner.practisedThisWeek, hint: "this week" },
           { label: "Sessions", value: learner.sessions, hint: "all time" },
         ].map((s) => (
@@ -110,7 +115,7 @@ export default function LearnerHome() {
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-title text-ink">Your learning path</h3>
             <span className="text-caption text-faint">
-              {masteredCount} of {learningPath.length} mastered
+              {doneCount} of {learningPath.length} completed
             </span>
           </div>
           {learningPath.length === 0 ? (

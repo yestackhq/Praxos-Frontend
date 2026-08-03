@@ -11,6 +11,9 @@ import { type PathStatus } from "@/lib/mock";
 
 const meta: Record<PathStatus, { label: string; icon: typeof Check; tone: "ink" | "outline" | "muted" }> = {
   mastered: { label: "Mastered", icon: Check, tone: "ink" },
+  // Completed = every section worked through. It opens the next document just
+  // like mastery does; the difference is only how well it went.
+  completed: { label: "Completed", icon: Check, tone: "outline" },
   in_progress: { label: "In progress", icon: Circle, tone: "outline" },
   up_next: { label: "Up next", icon: ChevronRight, tone: "outline" },
   locked: { label: "Locked", icon: Lock, tone: "muted" },
@@ -43,7 +46,8 @@ export default function LearningPath() {
           const Icon = m.icon;
           const active = item.status === "in_progress";
           const startable = active || item.status === "up_next";
-          const retakeable = item.status === "mastered" && item.docId != null;
+          const done = item.status === "mastered" || item.status === "completed";
+          const retakeable = done && item.docId != null;
           return (
             <li key={item.title} className="relative">
               <Card

@@ -16,7 +16,7 @@ export const learner = {
 
 export const workspace = { name: "Meridian Health", plan: "Admin workspace" };
 
-export type PathStatus = "mastered" | "in_progress" | "up_next" | "locked";
+export type PathStatus = "mastered" | "completed" | "in_progress" | "up_next" | "locked";
 
 export const learningPath: {
   title: string;
