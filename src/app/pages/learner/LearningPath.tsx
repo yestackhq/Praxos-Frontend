@@ -70,12 +70,10 @@ export default function LearningPath() {
                   <Icon className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="min-w-0 flex-1 truncate text-title text-ink" title={item.title}>{item.title}</p>
-                    <span className="shrink-0">
-                      <Badge tone={m.tone}>{m.label}</Badge>
-                    </span>
-                  </div>
+                  {/* No title tooltip: Chrome anchors it with stale coordinates
+                      while the page's mount animation is transforming, leaving a
+                      stray chip pinned to the viewport corner. */}
+                  <p className="truncate text-title text-ink">{item.title}</p>
                   <p className="mt-0.5 text-caption text-faint">
                     {item.sections} sections · step {i + 1} of {learningPath.length}
                   </p>
@@ -85,26 +83,34 @@ export default function LearningPath() {
                     </div>
                   )}
                 </div>
-                {startable && (
-                  <Link
-                    to={
-                      item.docId
-                        ? `/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}`
-                        : "/app/session"
-                    }
-                    className={buttonVariants({ size: "sm", className: "shrink-0" })}
-                  >
-                    <Play className="size-3.5" /> {active ? "Resume" : "Start"}
-                  </Link>
-                )}
-                {retakeable && (
-                  <Link
-                    to={`/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}&restart=1`}
-                    className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
-                  >
-                    <Play className="size-3.5" /> Retake
-                  </Link>
-                )}
+                {/* Fixed-width status and action slots, so badges line up in one
+                    column across rows instead of hugging buttons of varying
+                    widths — and "Locked" sits in the same column as the rest. */}
+                <span className="flex w-28 shrink-0 justify-end">
+                  <Badge tone={m.tone}>{m.label}</Badge>
+                </span>
+                <span className="flex w-24 shrink-0 justify-end">
+                  {startable && (
+                    <Link
+                      to={
+                        item.docId
+                          ? `/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}`
+                          : "/app/session"
+                      }
+                      className={buttonVariants({ size: "sm" })}
+                    >
+                      <Play className="size-3.5" /> {active ? "Resume" : "Start"}
+                    </Link>
+                  )}
+                  {retakeable && (
+                    <Link
+                      to={`/app/session?doc=${item.docId}&name=${encodeURIComponent(item.title)}&restart=1`}
+                      className={buttonVariants({ variant: "secondary", size: "sm" })}
+                    >
+                      <Play className="size-3.5" /> Retake
+                    </Link>
+                  )}
+                </span>
               </Card>
             </li>
           );
