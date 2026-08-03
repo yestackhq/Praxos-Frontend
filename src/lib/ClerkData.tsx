@@ -23,6 +23,15 @@ export function setSessionActive(active: boolean): void {
   _sessionActive = active;
 }
 
+// Registered by the provider so session code can force a silent bundle refetch
+// the moment a grade lands. Without this, finishing a document and tapping the
+// in-app back button showed a path that still had the next document locked —
+// the unlock only appeared on the next slow poll or a full page refresh.
+let _refreshBundle: (() => void) | null = null;
+export function refreshBundle(): void {
+  _refreshBundle?.();
+}
+
 /**
  * Only mounted when Clerk is configured (so the hooks always have a provider).
  *  - signed out  → demo bundle (mock).
@@ -130,6 +139,15 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
     if (!email) return;
     void load(false);
   }, [isLoaded, isSignedIn, email, reloadTick, load]);
+
+  // Let session code (useVoiceSession) trigger an immediate silent refetch when
+  // a score lands, so navigating back from a finished session shows fresh state.
+  useEffect(() => {
+    _refreshBundle = () => void load(true);
+    return () => {
+      _refreshBundle = null;
+    };
+  }, [load]);
 
   // Keep the workspace fresh without a WebSocket: silently refetch on focus + a slow
   // interval. Silent = no "loading" flash; paused during a live voice session.

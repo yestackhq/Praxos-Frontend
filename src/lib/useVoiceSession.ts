@@ -11,7 +11,7 @@ import {
   type RemoteTrackPublication,
 } from "livekit-client";
 import { apiPost } from "@/lib/apiClient";
-import { setSessionActive } from "@/lib/ClerkData";
+import { refreshBundle, setSessionActive } from "@/lib/ClerkData";
 import { clerkEnabled } from "@/app/auth/clerkEnabled";
 
 export type SessionPhase = "idle" | "connecting" | "live" | "scoring" | "ended" | "error";
@@ -407,7 +407,11 @@ export function useVoiceSession(documentId: number | null, restart = false) {
         "/api/sessions/score",
         { documentId, moduleIdx: moduleIdxRef.current, transcript: done },
         token,
-      ).catch(() => {});
+      )
+        // The grade moves section bests and can flip path state — pull the
+        // fresh bundle so the path is right when the learner navigates back.
+        .then(() => refreshBundle())
+        .catch(() => {});
     }
     publish({ type: "advance", moduleIdx: moduleIdxRef.current + 1 });
     setReady(false);
@@ -450,6 +454,11 @@ export function useVoiceSession(documentId: number | null, restart = false) {
       );
       setResult(r);
       setPhase("ended");
+      // Completing a document unlocks the next one server-side. Refetch the
+      // bundle NOW — teardown() has already resumed background refreshes — so
+      // the in-app back button lands on a path that shows the unlock, without
+      // needing a full page refresh.
+      refreshBundle();
       return r;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not score the session.");
