@@ -16,7 +16,15 @@ const QUOTES = [
   "Loading wisdom — hold tight…",
 ];
 
-export function WorkspaceLoader({ label = "Opening your workspace…" }: { label?: string }) {
+export function WorkspaceLoader({
+  label = "Opening your workspace…",
+  failed = false,
+}: {
+  label?: string;
+  /** The bootstrap is retrying after a failure. Keep the loader, but stop
+   * pretending everything is fine. */
+  failed?: boolean;
+}) {
   const [i, setI] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setI((n) => (n + 1) % QUOTES.length), 2600);
@@ -36,7 +44,17 @@ export function WorkspaceLoader({ label = "Opening your workspace…" }: { label
           {QUOTES[i]}
         </p>
       </div>
-      <p className="text-caption text-faint">{label}</p>
+      <p className="text-caption text-faint">
+        {failed ? "Still connecting — the server is taking longer than usual." : label}
+      </p>
+      {failed && (
+        <button
+          onClick={() => window.location.reload()}
+          className="text-caption text-soft underline underline-offset-4 hover:text-ink"
+        >
+          Try again
+        </button>
+      )}
     </div>
   );
 }

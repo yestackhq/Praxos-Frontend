@@ -16,8 +16,8 @@ const nav = [
 ];
 
 export function AdminLayout() {
-  const { account, role, mode } = useData();
-  if (mode === "loading") return <WorkspaceLoader />;
+  const { account, role, mode, loadFailed } = useData();
+  if (mode === "loading") return <WorkspaceLoader failed={loadFailed} />;
   return (
     <AppShell
       nav={

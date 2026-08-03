@@ -138,7 +138,7 @@ function SessionShell({
         <section className="flex flex-col items-center justify-center px-5 py-8 text-center sm:px-8 lg:px-10 lg:py-0">
           {phase === "idle" && (
             <>
-              <div className="mb-6 size-72 sm:size-96">
+              <div className="mb-6 size-52 sm:size-60">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="text-h3 text-ink">Ready to learn {docName}?</p>
@@ -154,7 +154,7 @@ function SessionShell({
 
           {phase === "connecting" && (
             <>
-              <div className="mb-6 size-72 opacity-80 sm:size-96">
+              <div className="mb-6 size-52 opacity-80 sm:size-60">
                 <VoiceOrb state={orbState(agentState, phase)} variant="violet" className="size-full" />
               </div>
               <p className="flex items-center gap-2 text-title text-soft">
@@ -170,7 +170,7 @@ function SessionShell({
                 Now teaching · {docName}
                 {totalModules > 0 ? ` · Section ${sectionIdx + 1} of ${totalModules}` : ""}
               </p>
-              <div className="my-6 size-[17rem] sm:size-[24rem] lg:size-[32rem]">
+              <div className="my-5 size-44 sm:size-52 lg:size-56">
                 <VoiceOrb
                   state={orbState(agentState, phase)}
                   variant="violet"

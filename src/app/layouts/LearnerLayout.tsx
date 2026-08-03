@@ -32,8 +32,8 @@ function SideLink({ to, label, icon: Icon, end }: (typeof nav)[number]) {
 }
 
 export function LearnerLayout() {
-  const { learner, account, role, mode } = useData();
-  if (mode === "loading") return <WorkspaceLoader />;
+  const { learner, account, role, mode, loadFailed } = useData();
+  if (mode === "loading") return <WorkspaceLoader failed={loadFailed} />;
   const isAdmin = role === "Admin";
   return (
     <AppShell

@@ -50,9 +50,13 @@ export default function LearnerHome() {
             <div className="mt-6 max-w-lg">
               <div className="mb-2 flex items-center justify-between text-caption text-faint">
                 <span>Understanding</span>
-                <span className="nums text-soft">{continueLearning.understanding} / 100</span>
+                <span className="nums text-soft">
+                  {continueLearning.understanding == null
+                    ? "Not yet measured"
+                    : `${continueLearning.understanding} / 100`}
+                </span>
               </div>
-              <ProgressBar value={continueLearning.understanding} />
+              <ProgressBar value={continueLearning.understanding ?? 0} />
             </div>
             <Link
               to={
@@ -84,7 +88,8 @@ export default function LearnerHome() {
       {/* Stat row */}
       <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-hairline py-7 sm:grid-cols-4">
         {[
-          { label: "Understanding", value: learner.understanding, hint: "across your work" },
+          // null = never measured, which must read differently from a score of 0.
+          { label: "Understanding", value: learner.understanding ?? "—", hint: "across your work" },
           { label: "Path progress", value: learner.pathProgress, hint: "documents mastered" },
           { label: "Practised", value: learner.practisedThisWeek, hint: "this week" },
           { label: "Sessions", value: learner.sessions, hint: "all time" },

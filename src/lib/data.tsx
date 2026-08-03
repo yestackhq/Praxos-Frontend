@@ -50,6 +50,11 @@ export type WorkspaceRef = { id: number; name: string; slug: string; role: strin
 
 export interface Bundle {
   mode: "demo" | "user" | "loading";
+  /** Set while the bootstrap is still failing. The app must keep showing the
+   * loader instead of an empty workspace: an empty dashboard is
+   * indistinguishable from "your data is gone", which is what a slow backend
+   * used to look like. */
+  loadFailed?: boolean;
   needsOnboarding: boolean;
   workspace: { name: string; plan: string; slug?: string };
   learner: {

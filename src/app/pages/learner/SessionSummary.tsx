@@ -5,9 +5,12 @@ import { ScoreRing } from "@/ui/data";
 import { buttonVariants } from "@/ui/Button";
 import type { ScoreResult } from "@/lib/useVoiceSession";
 
-function headlineFor(score: number | null): string {
-  // A sitting where the learner never really answered is UNSCOREABLE, not a bad
-  // score — saying so is honest and tells them what to do next.
+function headlineFor(score: number | null, graded = true): string {
+  // Three distinct outcomes, and conflating them misinforms the learner:
+  //   graded + score   -> a real assessment
+  //   graded, no score -> they did not say enough to assess
+  //   not graded       -> WE failed, not them. Their session is saved.
+  if (!graded) return "Saved — grading shortly";
   if (score === null) return "Nothing to assess yet";
   if (score >= 85) return "Strong understanding";
   if (score >= 70) return "Solid grasp";
@@ -37,12 +40,14 @@ export default function SessionSummary() {
         <ScoreRing value={result.score ?? 0} size={132} />
       </div>
       <p className="eyebrow mt-7">Session complete · {docName}</p>
-      <h1 className="mt-3 text-h2 text-ink">{headlineFor(result.score)}</h1>
+      <h1 className="mt-3 text-h2 text-ink">{headlineFor(result.score, result.graded !== false)}</h1>
       <p className="mx-auto mt-3 max-w-md text-body text-soft">
         {result.summary ||
-          (result.scoreable
-            ? "Here is how your understanding is tracking."
-            : "Explain the material out loud next time and Praxos can assess it.")}
+          (result.graded === false
+            ? "Your answers were recorded. The assessor was briefly unavailable, so this session will be graded shortly."
+            : result.scoreable
+              ? "Here is how your understanding is tracking."
+              : "Explain the material out loud next time and Praxos can assess it.")}
       </p>
 
       {result.understanding !== null && (

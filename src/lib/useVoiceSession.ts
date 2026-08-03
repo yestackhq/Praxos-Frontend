@@ -27,6 +27,10 @@ export type CaptionWord = { text: string; start?: number; end?: number };
 export interface ScoreResult {
   score: number | null;
   scoreable: boolean;
+  /** False when the assessor could not be reached — the sitting is stored with
+   * its transcript and will be graded later. Distinct from `scoreable`, which
+   * means the learner did not say enough to judge. */
+  graded?: boolean;
   understanding: number | null;
   band: string;
   summary: string;

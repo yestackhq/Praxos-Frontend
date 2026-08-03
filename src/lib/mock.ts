@@ -39,11 +39,22 @@ export const continueLearning = {
   progress: 40,
 };
 
-export const pastSessions = [
-  { doc: "Code of conduct", date: "18 Jun", score: 88, duration: "9m", topics: "5 / 5" },
-  { doc: "Data protection & GDPR", date: "17 Jun", score: 62, duration: "14m", topics: "4 / 6" },
-  { doc: "Information security basics", date: "15 Jun", score: 71, duration: "11m", topics: "3 / 4" },
-  { doc: "Code of conduct", date: "12 Jun", score: 54, duration: "8m", topics: "3 / 5" },
+// Shape mirrors GET /api/bootstrap -> pastSessions. `score` is nullable: a
+// sitting with nothing substantive said, or one whose grading failed, has no
+// number and must not be rendered as a zero.
+export const pastSessions: {
+  doc: string;
+  date: string;
+  section: number;
+  score: number | null;
+  band: string;
+  summary: string;
+  turns: number;
+}[] = [
+  { doc: "Code of conduct", date: "18 Jun", section: 3, score: 88, band: "Proficient", summary: "Explained the reporting window unprompted.", turns: 9 },
+  { doc: "Data protection & GDPR", date: "17 Jun", section: 2, score: 62, band: "Progressing", summary: "Grasped the principle, vague on retention.", turns: 14 },
+  { doc: "Information security basics", date: "15 Jun", section: 1, score: 71, band: "Proficient", summary: "Solid on phishing signals.", turns: 11 },
+  { doc: "Code of conduct", date: "12 Jun", section: 1, score: null, band: "Not started", summary: "Not enough was said to assess.", turns: 1 },
 ];
 
 export const myDocuments = [

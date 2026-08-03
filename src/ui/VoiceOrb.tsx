@@ -161,8 +161,10 @@ ColoredSDF getOrb(SDFArgs args) {
     float baseRadius = 0.37;
     float entryScale = mix(0.9, 1.0, entryAnimation);
     // Breathe with the voice: a gentle idle pulse, plus real swell on speech.
-    float idlePulse = 0.012 * sin(args.time * 1.6);
-    float radius = baseRadius * entryScale * (1.0 + idlePulse + u_level * 0.16);
+    float idlePulse = 0.010 * sin(args.time * 1.1);
+    // Swell is deliberately small. A large radius response reads as the orb
+    // lurching on every syllable rather than breathing with the voice.
+    float radius = baseRadius * entryScale * (1.0 + idlePulse + u_level * 0.045);
 
     vec2 adjusted_st = args.st;
 
@@ -181,17 +183,19 @@ ColoredSDF getOrb(SDFArgs args) {
     float waveSpread = 1.0;
     // The three wave layers churn harder the louder the tutor is speaking, so
     // the surface reads as "this is the voice" rather than a looping animation.
-    float layer1Amplitude = 1.5 + u_level * 0.85;
+    float layer1Amplitude = 1.5 + u_level * 0.20;
     float layer1Frequency = 1.0;
-    float layer2Amplitude = 1.4 + u_level * 0.75;
+    float layer2Amplitude = 1.4 + u_level * 0.16;
     float layer2Frequency = 1.0;
-    float layer3Amplitude = 1.3 + u_level * 0.65;
+    float layer3Amplitude = 1.3 + u_level * 0.12;
     float layer3Frequency = 1.0;
     float fbmStrength = 1.2;
     float fbmPowerDamping = 0.55;
     float overallSoundScale = 1.0;
-    float blurRadius = 1.0;
-    float timescale = 1.0 + u_level * 1.1;   // louder -> faster churn
+    float blurRadius = 1.45;
+    // Churn speed barely tracks the voice: tying it hard to the level was what
+    // made the surface look frantic while speaking.
+    float timescale = 1.0 + u_level * 0.15;
 
     float time = args.time * timescale * 0.85;
     verticalOffset += 1.0 - waveSpread;
@@ -411,6 +415,7 @@ export function VoiceOrb({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<VoiceOrbState>(state);
   const levelRef = useRef(0);
+  const envelopeRef = useRef(0);
   const failedRef = useRef(false);
 
   stateRef.current = state;
@@ -479,11 +484,15 @@ export function VoiceOrb({
       const [w, h] = resize();
       const now = (performance.now() - started) / 1000;
 
-      // Attack fast, release slow — the orb jumps on a syllable and settles
-      // smoothly, instead of flickering with every frame of the analyser.
+      // Two-stage smoothing. The analyser's per-frame RMS is extremely spiky —
+      // feeding it straight in made the orb flicker on every syllable. The first
+      // stage tracks the ENVELOPE of speech (still fairly quick to rise so the
+      // orb doesn't feel dead), the second glides toward it, which is what makes
+      // the motion read as smooth rather than reactive.
       const raw = Math.max(0, Math.min(1, volumeRef?.current ?? 0));
-      const k = raw > levelRef.current ? 0.45 : 0.08;
-      levelRef.current += (raw - levelRef.current) * k;
+      const attack = raw > envelopeRef.current ? 0.10 : 0.030;
+      envelopeRef.current += (raw - envelopeRef.current) * attack;
+      levelRef.current += (envelopeRef.current - levelRef.current) * 0.06;
 
       const want = STATE_THEME[stateRef.current] ?? STATE_THEME.idle;
       mixInto(theme.main as [number, number, number], want.main, 0.06);

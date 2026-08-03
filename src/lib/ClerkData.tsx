@@ -68,8 +68,10 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
     // Send the persisted active workspace as X-Workspace-Id; the backend treats it as a
     // selector and falls back to a real membership if it's stale.
     setActiveWorkspaceId(localStorage.getItem(ACTIVE_WS_KEY));
-    // Retry generously: the backend may be COLD-STARTING (Railway sleeps idle services).
-    for (let attempt = 0; attempt < 7; attempt++) {
+    // Retry generously: the backend may be COLD-STARTING (Railway sleeps idle
+    // services) or simply slow on a large workspace.
+    const MAX_ATTEMPTS = 12;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
         const token = await getTokenRef.current();
         const data = await apiPost<Bundle>("/api/bootstrap", { name, email }, token);
@@ -86,13 +88,25 @@ export function ClerkDataProvider({ children }: { children: ReactNode }) {
         didInitRef.current = true;
         return;
       } catch {
-        await new Promise((r) => setTimeout(r, Math.min(3000, 700 * (attempt + 1))));
+        // Tell the loader it is taking longer than usual, rather than sitting on
+        // a cheerful spinner that gives no hint anything is wrong.
+        if (!silent && !didInitRef.current && attempt >= 1) {
+          setBundle((b) => ({ ...b, mode: "loading", loadFailed: true }));
+        }
+        await new Promise((r) => setTimeout(r, Math.min(5000, 700 * (attempt + 1))));
       }
     }
-    // Hard failure: land the user in the app, NOT onboarding — only on a non-silent
-    // (foreground) load, and only if we've never shown real data.
-    if (!didInitRef.current) {
-      setBundle({ ...emptyUserBundle(name || "there", email), needsOnboarding: false });
+    // Every attempt failed. STAY on the loader — dropping the user into an empty
+    // workspace here made a slow backend look like data loss, and an invited
+    // learner could not tell the difference between "still loading" and "you
+    // have nothing". Silent background refreshes never touch the view.
+    if (!didInitRef.current && !silent) {
+      setBundle({
+        ...emptyUserBundle(name || "there", email),
+        needsOnboarding: false,
+        mode: "loading",
+        loadFailed: true,
+      });
     }
   }, []);
 

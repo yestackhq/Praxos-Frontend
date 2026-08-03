@@ -25,9 +25,9 @@ export default function PastSessions() {
           <>
             <Th>Document</Th>
             <Th>Date</Th>
+            <Th>Section</Th>
             <Th>Understanding</Th>
-            <Th>Topics</Th>
-            <Th className="text-right">Duration</Th>
+            <Th className="text-right">Answers</Th>
           </>
         }
       >
@@ -37,18 +37,29 @@ export default function PastSessions() {
               <span className="block max-w-[13rem] truncate sm:max-w-[26rem]" title={s.doc}>{s.doc}</span>
             </Td>
             <Td>{s.date}</Td>
+            <Td className="nums">{s.section}</Td>
             <Td>
-              <span
-                className={cn(
-                  "nums font-medium",
-                  s.score >= 80 ? "text-ink" : s.score >= 60 ? "text-soft" : "text-faint",
-                )}
-              >
-                {s.score}
-              </span>
+              {s.score == null ? (
+                // Never render a missing score as 0 — "not assessed" and
+                // "scored zero" are different things and the learner can act on
+                // only one of them.
+                <span className="text-faint" title={s.summary}>
+                  Not assessed
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    "nums font-medium",
+                    s.score >= 80 ? "text-ink" : s.score >= 60 ? "text-soft" : "text-faint",
+                  )}
+                  title={s.summary}
+                >
+                  {s.score}
+                  {s.band ? <span className="ml-2 text-caption text-faint">{s.band}</span> : null}
+                </span>
+              )}
             </Td>
-            <Td className="nums">{s.topics}</Td>
-            <Td className="nums text-right">{s.duration}</Td>
+            <Td className="nums text-right">{s.turns}</Td>
           </tr>
         ))}
       </Table>
