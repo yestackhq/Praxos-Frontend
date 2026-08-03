@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Play, Check, Circle, ChevronRight, Lock, Flame, FileText, Sparkles } from "lucide-react";
 import { Card } from "@/ui/Card";
-import { Badge, ProgressBar, Orb } from "@/ui/data";
+import { Badge, ProgressBar } from "@/ui/data";
+import { VoiceOrb } from "@/ui/VoiceOrb";
 import { EmptyState } from "@/ui/EmptyState";
 import { buttonVariants } from "@/ui/Button";
 import { cn } from "@/lib/utils";
@@ -75,7 +76,7 @@ export default function LearnerHome() {
             </Link>
           </div>
           {/* Decorative — only on wide screens where it won't sit under the text. */}
-          <Orb size={260} className="absolute -right-6 top-1/2 hidden -translate-y-1/2 opacity-90 xl:block" />
+          <VoiceOrb state="idle" className="absolute -right-6 top-1/2 hidden size-[260px] -translate-y-1/2 xl:block" />
         </Card>
       ) : (
         <EmptyState

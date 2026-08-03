@@ -40,7 +40,9 @@ export default function LearningPath() {
           }
         />
       ) : (
-      <ol className="relative space-y-3 before:absolute before:left-[19px] before:top-2 before:h-[calc(100%-2rem)] before:w-px before:bg-hairline">
+      // The connector must run through the centre of the step icons: 1px card
+      // border + p-5 (20px) + half the size-10 icon (20px) = 40.5px.
+      <ol className="relative space-y-3 before:absolute before:left-[40.5px] before:top-2 before:h-[calc(100%-2rem)] before:w-px before:bg-hairline">
         {learningPath.map((item, i) => {
           const m = meta[item.status];
           const Icon = m.icon;
