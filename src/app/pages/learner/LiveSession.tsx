@@ -58,6 +58,7 @@ function SessionShell({
   volumeRef,
   error,
   ready,
+  canAdvance,
   isLast,
   sectionIdx,
   totalModules,
@@ -76,6 +77,7 @@ function SessionShell({
   volumeRef?: { current: number };
   error: string | null;
   ready: boolean;
+  canAdvance: boolean;
   isLast: boolean;
   sectionIdx: number;
   totalModules: number;
@@ -106,20 +108,20 @@ function SessionShell({
             <>
               {/* When the tutor has signalled the learner is ready (and it isn't the last
                   section), End stays available beside the primary "Next section". */}
-              {phase === "live" && ready && !isLast && (
+              {phase === "live" && canAdvance && !isLast && (
                 <button onClick={onEnd} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   End session
                 </button>
               )}
               <Button
                 size="sm"
-                onClick={phase === "live" && ready && !isLast ? onAdvance : onEnd}
+                onClick={phase === "live" && canAdvance && !isLast ? onAdvance : onEnd}
                 disabled={phase === "scoring"}
               >
                 {phase === "scoring" ? <Loader2 className="size-3.5 animate-spin" /> : null}{" "}
                 {phase === "scoring"
                   ? "Scoring"
-                  : ready
+                  : canAdvance
                     ? isLast
                       ? "Finish & score"
                       : "Next section →"
@@ -193,7 +195,9 @@ function SessionShell({
                           ? isLast
                             ? "All done — finish whenever you're ready."
                             : "Ready for the next section whenever you are."
-                          : "Listening…"}
+                          : canAdvance
+                            ? "Move on whenever you like — tap Next section."
+                            : "Listening…"}
                   </p>
                 )}
               </div>
@@ -259,6 +263,7 @@ function LiveSessionInner({
     spokenWords,
     error,
     ready,
+    canAdvance,
     isLast,
     sectionIdx,
     totalModules,
@@ -283,6 +288,7 @@ function LiveSessionInner({
       volumeRef={outputVolumeRef}
       error={error}
       ready={ready}
+      canAdvance={canAdvance}
       isLast={isLast}
       sectionIdx={sectionIdx}
       totalModules={totalModules}
@@ -318,6 +324,7 @@ export default function LiveSession() {
       spokenWords={0}
       error={demoError}
       ready={false}
+      canAdvance={false}
       isLast={true}
       sectionIdx={0}
       totalModules={0}

@@ -77,6 +77,12 @@ type AgentMessage =
  * control back to the learner. */
 const ADVANCE_TIMEOUT_MS = 10_000;
 
+/** After this many spoken answers in one section, the learner may advance whether
+ * or not the tutor has signalled readiness. The tutor deciding when to move on is
+ * a good default, but it must never be the only way out — a model that keeps
+ * asking questions would otherwise pin someone to section one indefinitely. */
+const ADVANCE_UNLOCK_TURNS = 5;
+
 export function useVoiceSession(documentId: number | null, restart = false) {
   const { getToken } = useAuth();
   const [phase, setPhase] = useState<SessionPhase>("idle");
@@ -91,6 +97,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const [sectionIdx, setSectionIdx] = useState(0);
   const [totalModules, setTotalModules] = useState(0);
   const [isLast, setIsLast] = useState(true);
+  const [sectionAnswers, setSectionAnswers] = useState(0);
   // Set when an advance did not land, so the UI can offer the button again
   // instead of sitting on the previous section forever.
   const [advanceError, setAdvanceError] = useState<string | null>(null);
@@ -122,6 +129,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
   const push = useCallback((turn: Turn) => {
     transcriptRef.current = [...transcriptRef.current, turn];
     setTranscript(transcriptRef.current);
+    if (turn.role === "learner") setSectionAnswers((n) => n + 1);
   }, []);
 
   /** Per frame: read the tutor's output level (→ orb) and move the caption
@@ -243,6 +251,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
           setSectionIdx(msg.moduleIdx);
           setIsLast(msg.isLast);
           setReady(false);
+          setSectionAnswers(0);
           sectionStartRef.current = transcriptRef.current.length;
           captionRef.current = [];
           setCaption([]);
@@ -365,6 +374,7 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     }
     publish({ type: "advance", moduleIdx: moduleIdxRef.current + 1 });
     setReady(false);
+    setSectionAnswers(0);
     setAdvanceError(null);
     setAgentState("thinking");
 
@@ -423,6 +433,10 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     end,
     advanceSection,
     ready,
+    // The tutor's signal OR the safety valve. The UI gates on this so a learner
+    // can always move on once they have genuinely engaged with the section.
+    canAdvance: ready || sectionAnswers >= ADVANCE_UNLOCK_TURNS,
+    sectionAnswers,
     sectionIdx,
     totalModules,
     isLast,
