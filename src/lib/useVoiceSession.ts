@@ -413,7 +413,10 @@ export function useVoiceSession(documentId: number | null, restart = false) {
             const token = await getToken();
             await apiPost(
               "/api/sessions/score",
-              { documentId, moduleIdx: leavingIdx, transcript: done },
+              // deferred: participation is recorded instantly (so a resume in
+              // the next few minutes lands on the right section) and the slow
+              // grading runs server-side in the background.
+              { documentId, moduleIdx: leavingIdx, transcript: done, deferred: true },
               token,
             );
             // The grade moves section bests and can flip path state — pull the
