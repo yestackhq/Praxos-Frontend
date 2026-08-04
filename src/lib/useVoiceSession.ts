@@ -401,19 +401,35 @@ export function useVoiceSession(documentId: number | null, restart = false) {
     // containing a single tutor line and zero learner turns, which then read as
     // "they started section N+1" when they had not.
     sectionStartRef.current = transcriptRef.current.length;
+    const leavingIdx = moduleIdxRef.current;
     if (done.length) {
-      const token = await getToken();
-      void apiPost(
-        "/api/sessions/score",
-        { documentId, moduleIdx: moduleIdxRef.current, transcript: done },
-        token,
-      )
-        // The grade moves section bests and can flip path state — pull the
-        // fresh bundle so the path is right when the learner navigates back.
-        .then(() => refreshBundle())
-        .catch(() => {});
+      // Post the grade with retries, and tell the WORKER on success — it holds
+      // its own copy of these turns until the confirmation arrives, and grades
+      // them itself at session end if this post never lands. Fire-and-forget
+      // with a swallowed error is how two real conversations vanished.
+      void (async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const token = await getToken();
+            await apiPost(
+              "/api/sessions/score",
+              { documentId, moduleIdx: leavingIdx, transcript: done },
+              token,
+            );
+            // The grade moves section bests and can flip path state — pull the
+            // fresh bundle so the path is right when the learner navigates back.
+            refreshBundle();
+            publish({ type: "scored", moduleIdx: leavingIdx });
+            return;
+          } catch {
+            await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+          }
+        }
+        // All attempts failed: no confirmation is sent, so the worker's
+        // safety net grades this section when the sitting ends.
+      })();
     }
-    publish({ type: "advance", moduleIdx: moduleIdxRef.current + 1 });
+    publish({ type: "advance", moduleIdx: leavingIdx + 1 });
     setReady(false);
     setSectionAnswers(0);
     setAdvanceError(null);
